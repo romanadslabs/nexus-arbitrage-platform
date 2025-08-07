@@ -5,7 +5,9 @@ import { useAuth } from '@/components/providers/AuthProvider'
 import { Campaign, Account } from '@/types'
 import GoogleAdsSettings from '@/components/settings/GoogleAdsSettings'
 import { OffersService, OfferLinksService } from '@/lib/offers'
-import { Plus, Edit, Trash2, Play, Pause, Target, TrendingUp, Filter, Search, Settings, DollarSign, Eye, Download, Users, Bot, ExternalLink } from 'lucide-react'
+import CampaignStatsModal from './CampaignStatsModal'
+import CampaignStatsView from './CampaignStatsView'
+import { Plus, Edit, Trash2, Play, Pause, Target, TrendingUp, Filter, Search, Settings, DollarSign, Eye, Download, Users, Bot, ExternalLink, BarChart3 } from 'lucide-react'
 
 type CampaignStatus = 'active' | 'paused' | 'completed' | 'failed'
 
@@ -23,6 +25,10 @@ export default function CampaignsManager() {
   const [selectedPlatform, setSelectedPlatform] = useState<string>('')
   const [showGoogleAdsSettings, setShowGoogleAdsSettings] = useState(false)
   const [selectedOffer, setSelectedOffer] = useState<any>(null)
+  const [showStatsModal, setShowStatsModal] = useState(false)
+  const [showStatsView, setShowStatsView] = useState(false)
+  const [selectedCampaign, setSelectedCampaign] = useState<any>(null)
+  const [statsEditDate, setStatsEditDate] = useState('')
   const [formData, setFormData] = useState({
     name: '',
     offerId: '',
@@ -124,6 +130,31 @@ export default function CampaignsManager() {
   // Отримання інформації про обране посилання
   const getSelectedLinkInfo = () => {
     return offerLinks.find(link => link.id === formData.linkId)
+  }
+
+  // Функції для роботи зі статистикою
+  const handleShowStats = (campaign: any) => {
+    setSelectedCampaign(campaign)
+    setShowStatsView(true)
+  }
+
+  const handleAddStats = (campaign: any) => {
+    setSelectedCampaign(campaign)
+    setStatsEditDate('')
+    setShowStatsModal(true)
+  }
+
+  const handleEditStats = (campaign: any, date: string) => {
+    setSelectedCampaign(campaign)
+    setStatsEditDate(date)
+    setShowStatsModal(true)
+  }
+
+  const handleStatsClose = () => {
+    setShowStatsModal(false)
+    setShowStatsView(false)
+    setSelectedCampaign(null)
+    setStatsEditDate('')
   }
 
   // Отримання доступних аккаунтів для вибраної платформи
@@ -400,8 +431,25 @@ export default function CampaignsManager() {
                   
                   <div className="flex items-center gap-2">
                     <button
+                      onClick={() => handleAddStats(campaign)}
+                      className="p-2 text-green-400 hover:text-green-600 dark:hover:text-green-300"
+                      title="Додати статистику"
+                    >
+                      <Plus size={16} />
+                    </button>
+                    
+                    <button
+                      onClick={() => handleShowStats(campaign)}
+                      className="p-2 text-blue-400 hover:text-blue-600 dark:hover:text-blue-300"
+                      title="Переглянути статистику"
+                    >
+                      <BarChart3 size={16} />
+                    </button>
+                    
+                    <button
                       onClick={() => handleStatusToggle(campaign.id, campaign.status as CampaignStatus)}
                       className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                      title={campaign.status === 'active' ? 'Призупинити' : 'Запустити'}
                     >
                       {campaign.status === 'active' ? <Pause size={16} /> : <Play size={16} />}
                     </button>
@@ -409,6 +457,7 @@ export default function CampaignsManager() {
                     <button
                       onClick={() => handleEdit(campaign)}
                       className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                      title="Редагувати"
                     >
                       <Edit size={16} />
                     </button>
@@ -416,6 +465,7 @@ export default function CampaignsManager() {
                     <button
                       onClick={() => handleDelete(campaign.id)}
                       className="p-2 text-red-400 hover:text-red-600 dark:hover:text-red-300"
+                      title="Видалити"
                     >
                       <Trash2 size={16} />
                     </button>
@@ -681,6 +731,45 @@ export default function CampaignsManager() {
               </button>
             </div>
             <GoogleAdsSettings />
+          </div>
+        </div>
+      )}
+
+      {/* Модаль додавання/редагування статистики */}
+      {showStatsModal && selectedCampaign && (
+        <CampaignStatsModal
+          isOpen={showStatsModal}
+          onClose={handleStatsClose}
+          campaignId={selectedCampaign.id}
+          campaignName={selectedCampaign.name}
+          onSave={() => {
+            // Оновлюємо дані після збереження
+            loadData()
+          }}
+        />
+      )}
+
+      {/* Модаль перегляду статистики */}
+      {showStatsView && selectedCampaign && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-6xl mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                Статистика кампанії
+              </h3>
+              <button
+                onClick={handleStatsClose}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <CampaignStatsView
+              campaignId={selectedCampaign.id}
+              campaignName={selectedCampaign.name}
+              onEditStats={(date) => handleEditStats(selectedCampaign, date)}
+            />
           </div>
         </div>
       )}

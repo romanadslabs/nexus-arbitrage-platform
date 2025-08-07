@@ -167,6 +167,27 @@ export interface CampaignResult {
   roi: number
 }
 
+// Щоденна статистика кампанії
+export interface CampaignDailyStats {
+  id: string
+  campaignId: string
+  date: string // YYYY-MM-DD format
+  impressions: number
+  clicks: number
+  conversions: number
+  leads: number
+  spend: number
+  revenue: number
+  ctr: number // Click-through rate
+  cvr: number // Conversion rate
+  cpl: number // Cost per lead
+  roi: number // Return on investment
+  notes?: string
+  createdAt: Date
+  updatedAt: Date
+  createdBy: string // User ID who entered the stats
+}
+
 export interface Task {
   id: string
   title: string
