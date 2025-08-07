@@ -4,7 +4,8 @@ import React, { useState, useEffect } from 'react'
 import { useAuth } from '@/components/providers/AuthProvider'
 import { Campaign, Account } from '@/types'
 import GoogleAdsSettings from '@/components/settings/GoogleAdsSettings'
-import { Plus, Edit, Trash2, Play, Pause, Target, TrendingUp, Filter, Search, Settings, DollarSign, Eye, Download, Users, Bot } from 'lucide-react'
+import { OffersService, OfferLinksService } from '@/lib/offers'
+import { Plus, Edit, Trash2, Play, Pause, Target, TrendingUp, Filter, Search, Settings, DollarSign, Eye, Download, Users, Bot, ExternalLink } from 'lucide-react'
 
 type CampaignStatus = 'active' | 'paused' | 'completed' | 'failed'
 
@@ -12,6 +13,8 @@ export default function CampaignsManager() {
   const { user } = useAuth()
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [accounts, setAccounts] = useState<Account[]>([])
+  const [offers, setOffers] = useState<any[]>([])
+  const [offerLinks, setOfferLinks] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingCampaign, setEditingCampaign] = useState<string | null>(null)
@@ -23,6 +26,7 @@ export default function CampaignsManager() {
   const [formData, setFormData] = useState({
     name: '',
     offerId: '',
+    linkId: '',
     accountId: '',
     budget: '',
     platform: '',
@@ -44,6 +48,7 @@ export default function CampaignsManager() {
       setFormData(prev => ({
         ...prev,
         offerId: offer.id,
+        linkId: '', // Почнемо з порожнього значення
         name: `Кампанія ${offer.name}`
       }))
       // Очищаємо localStorage
@@ -51,7 +56,7 @@ export default function CampaignsManager() {
       // Автоматично показуємо форму створення
       setShowAddForm(true)
     }
-  }, [])
+  }, [offerLinks])
 
   const loadData = () => {
     // Завантажуємо кампанії з localStorage
@@ -65,6 +70,14 @@ export default function CampaignsManager() {
     if (savedAccounts) {
       setAccounts(JSON.parse(savedAccounts))
     }
+
+    // Завантажуємо оффери
+    const allOffers = OffersService.getAllOffers()
+    setOffers(allOffers)
+
+    // Завантажуємо посилання офферів
+    const allLinks = OfferLinksService.getAllLinks()
+    setOfferLinks(allLinks)
   }
 
   // Отримуємо заголовок залежно від ролі
@@ -96,6 +109,21 @@ export default function CampaignsManager() {
   // Отримання інформації про аккаунт
   const getAccountInfo = (accountId: string) => {
     return accounts.find(acc => acc.id === accountId)
+  }
+
+  // Отримання посилань для обраного офферу
+  const getOfferLinks = (offerId: string) => {
+    return offerLinks.filter(link => link.offerId === offerId && link.status === 'active')
+  }
+
+  // Отримання інформації про обраний оффер
+  const getSelectedOfferInfo = () => {
+    return offers.find(offer => offer.id === formData.offerId)
+  }
+
+  // Отримання інформації про обране посилання
+  const getSelectedLinkInfo = () => {
+    return offerLinks.find(link => link.id === formData.linkId)
   }
 
   // Отримання доступних аккаунтів для вибраної платформи
@@ -136,6 +164,8 @@ export default function CampaignsManager() {
     
     const campaignData = {
       name: formData.name,
+      offerId: formData.offerId,
+      linkId: formData.linkId,
       accountId: formData.accountId,
       budget: parseFloat(formData.budget),
       spent: 0,
@@ -168,6 +198,7 @@ export default function CampaignsManager() {
     setFormData({
       name: '',
       offerId: '',
+      linkId: '',
       accountId: '',
       budget: '',
       platform: '',
@@ -182,6 +213,7 @@ export default function CampaignsManager() {
     setFormData({
       name: campaign.name,
       offerId: '',
+      linkId: '',
       accountId: campaign.accountId,
       budget: campaign.budget.toString(),
       platform: campaign.platform,
@@ -320,6 +352,9 @@ export default function CampaignsManager() {
       <div className="grid gap-4">
         {filteredCampaigns.map((campaign) => {
           const account = getAccountInfo(campaign.accountId)
+          const offer = offers.find(o => o.id === campaign.offerId)
+          const link = offerLinks.find(l => l.id === campaign.linkId)
+          
           return (
             <div key={campaign.id} className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between">
@@ -328,13 +363,28 @@ export default function CampaignsManager() {
                     {getPlatformIcon(campaign.platform)}
                   </div>
                   
-                  <div>
+                  <div className="flex-1">
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                       {campaign.name}
                     </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      {campaign.platform} • {account?.name || 'Невідомий аккаунт'}
-                    </p>
+                    <div className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
+                      <div>
+                        {campaign.platform} • {account?.name || 'Невідомий аккаунт'}
+                      </div>
+                      {offer && (
+                        <div className="flex items-center gap-2">
+                          <ExternalLink size={14} className="text-blue-500" />
+                          <span>
+                            Оффер: {offer.name} (${offer.rate})
+                          </span>
+                        </div>
+                      )}
+                      {link && (
+                        <div className="text-xs text-blue-600 dark:text-blue-400">
+                          Посилання: {link.name} ({link.type === 'landing' ? 'Лендинг' : 'Прелендинг'})
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
                 
@@ -436,6 +486,86 @@ export default function CampaignsManager() {
                   required
                 />
               </div>
+
+              {/* Блок офферу */}
+              {selectedOffer && (
+                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-700">
+                  <div className="flex items-center gap-3 mb-2">
+                    <ExternalLink size={20} className="text-blue-600" />
+                    <h4 className="font-medium text-blue-900 dark:text-blue-100">
+                      Обраний оффер: {selectedOffer.name}
+                    </h4>
+                  </div>
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    Ставка: ${selectedOffer.rate} • Вертикаль: {selectedOffer.vertical}
+                  </p>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Оффер *
+                  </label>
+                  <select
+                    value={formData.offerId}
+                    onChange={(e) => {
+                      setFormData(prev => ({ ...prev, offerId: e.target.value, linkId: '' }))
+                      const selectedOfferObj = offers.find(offer => offer.id === e.target.value)
+                      setSelectedOffer(selectedOfferObj || null)
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                    required
+                  >
+                    <option value="">Виберіть оффер</option>
+                    {offers.map((offer) => (
+                      <option key={offer.id} value={offer.id}>
+                        {offer.name} (${offer.rate})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Посилання *
+                  </label>
+                  <select
+                    value={formData.linkId}
+                    onChange={(e) => setFormData(prev => ({ ...prev, linkId: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                    required
+                    disabled={!formData.offerId}
+                  >
+                    <option value="">
+                      {!formData.offerId ? 'Спочатку виберіть оффер' : 'Виберіть посилання'}
+                    </option>
+                    {formData.offerId && getOfferLinks(formData.offerId).map((link) => (
+                      <option key={link.id} value={link.id}>
+                        {link.name} ({link.type})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Інформація про обране посилання */}
+              {formData.linkId && (() => {
+                const linkInfo = getSelectedLinkInfo()
+                return linkInfo ? (
+                  <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg text-sm">
+                    <div className="font-medium text-gray-900 dark:text-white mb-1">
+                      {linkInfo.name}
+                    </div>
+                    <div className="text-gray-600 dark:text-gray-400">
+                      URL: {linkInfo.url}
+                    </div>
+                    <div className="text-gray-600 dark:text-gray-400">
+                      Тип: {linkInfo.type === 'landing' ? 'Лендинг' : 'Прелендинг'}
+                    </div>
+                  </div>
+                ) : null
+              })()}
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -554,6 +684,8 @@ export default function CampaignsManager() {
           </div>
         </div>
       )}
+
+
     </div>
   )
 } 

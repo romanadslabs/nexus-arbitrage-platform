@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
-import { useData } from '@/components/providers/DataProvider'
+// import { useData } from '@/components/providers/DataProvider'
 import { useAuth } from '@/components/providers/AuthProvider'
 import ModernLayout from '@/components/layout/ModernLayout'
 import TaskCreator from '@/components/chat/TaskCreator'
@@ -31,7 +31,6 @@ interface ChatMessage {
   isSystem?: boolean
   channelId: string
   mentions?: string[]
-  attachments?: any[]
   reactions?: any[]
   replyTo?: string
 }
@@ -47,9 +46,22 @@ interface ChatChannel {
   lastMessageAt?: Date
 }
 
+interface Workspace {
+  id: string
+  name: string
+  description: string
+  ownerId: string
+  team: any[]
+  tasks: any[]
+  activity: any[]
+  chat: ChatMessage[]
+  channels: ChatChannel[]
+  createdAt: Date
+}
+
 export default function WorkspaceChatPage() {
-  const { workspace, addChatMessage, addReaction, removeReaction } = useData()
   const { user } = useAuth()
+  const [workspace, setWorkspace] = useState<Workspace | null>(null)
   const [newMessage, setNewMessage] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [selectedChannel, setSelectedChannel] = useState<string>('')
@@ -58,6 +70,99 @@ export default function WorkspaceChatPage() {
   const [showTaskCreator, setShowTaskCreator] = useState(false)
   const [taskCreatorMessage, setTaskCreatorMessage] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  // Завантаження workspace з localStorage
+  useEffect(() => {
+    const savedWorkspace = localStorage.getItem('nexus_workspace')
+    if (savedWorkspace) {
+      try {
+        const parsed = JSON.parse(savedWorkspace)
+        // Ensure channels array exists
+        if (!parsed.channels) {
+          parsed.channels = [
+            {
+              id: 'channel_google_ads',
+              name: '🔍 Робота з Google аккаунтами',
+              description: 'Робота з Google аккаунтами та запуск реклами',
+              type: 'work',
+              members: [user?.id || 'user_1'],
+              isActive: true,
+              createdAt: new Date(),
+            },
+            {
+              id: 'channel_work_moments',
+              name: '💼 Робочі моменти',
+              description: 'Обговорення робочих питань та координація',
+              type: 'work',
+              members: [user?.id || 'user_1'],
+              isActive: true,
+              createdAt: new Date(),
+            },
+            {
+              id: 'channel_improvements',
+              name: '🚀 Покращення сайту',
+              description: 'Обговорення покращень та нових функцій',
+              type: 'work',
+              members: [user?.id || 'user_1'],
+              isActive: true,
+              createdAt: new Date(),
+            },
+          ]
+        }
+        setWorkspace(parsed)
+      } catch (error) {
+        console.error('Error parsing workspace:', error)
+        initializeWorkspace()
+      }
+    } else {
+      initializeWorkspace()
+    }
+  }, [user])
+
+  const initializeWorkspace = () => {
+    const newWorkspace: Workspace = {
+      id: 'ws_main',
+      name: 'Основний робочий простір',
+      description: 'Головний простір для командної роботи',
+      ownerId: user?.id || 'user_1',
+      team: [],
+      tasks: [],
+      activity: [],
+      chat: [],
+      channels: [
+        {
+          id: 'channel_google_ads',
+          name: '🔍 Робота з Google аккаунтами',
+          description: 'Робота з Google аккаунтами та запуск реклами',
+          type: 'work',
+          members: [user?.id || 'user_1'],
+          isActive: true,
+          createdAt: new Date(),
+        },
+        {
+          id: 'channel_work_moments',
+          name: '💼 Робочі моменти',
+          description: 'Обговорення робочих питань та координація',
+          type: 'work',
+          members: [user?.id || 'user_1'],
+          isActive: true,
+          createdAt: new Date(),
+        },
+        {
+          id: 'channel_improvements',
+          name: '🚀 Покращення сайту',
+          description: 'Обговорення покращень та нових функцій',
+          type: 'work',
+          members: [user?.id || 'user_1'],
+          isActive: true,
+          createdAt: new Date(),
+        },
+      ],
+      createdAt: new Date()
+    }
+    setWorkspace(newWorkspace)
+    localStorage.setItem('nexus_workspace', JSON.stringify(newWorkspace))
+  }
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -72,6 +177,34 @@ export default function WorkspaceChatPage() {
   useEffect(() => {
     scrollToBottom()
   }, [workspace?.chat, selectedChannel])
+
+  const addChatMessage = async (messageData: { text: string; authorId: string; authorName: string; channelId: string }) => {
+    if (!workspace) return
+    
+    const newMessage: ChatMessage = {
+      id: Date.now().toString(),
+      text: messageData.text,
+      authorId: messageData.authorId,
+      authorName: messageData.authorName,
+      timestamp: new Date().toISOString(),
+      channelId: messageData.channelId
+    }
+    
+    const currentChat = Array.isArray(workspace.chat) ? workspace.chat : []
+    
+    const updatedWorkspace = {
+      ...workspace,
+      chat: [...currentChat, newMessage],
+      channels: workspace.channels.map(channel => 
+        channel.id === messageData.channelId 
+          ? { ...channel, lastMessageAt: new Date() }
+          : channel
+      )
+    }
+    
+    setWorkspace(updatedWorkspace)
+    localStorage.setItem('nexus_workspace', JSON.stringify(updatedWorkspace))
+  }
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -95,18 +228,8 @@ export default function WorkspaceChatPage() {
   }
 
   const handleReaction = async (messageId: string, emoji: string) => {
-    if (!user) return
-    
-    const message = workspace?.chat.find(m => m.id === messageId)
-    const hasReaction = message?.reactions?.some(r => 
-      r.emoji === emoji && r.userIds.includes(user.id)
-    )
-
-    if (hasReaction) {
-      await removeReaction(messageId, emoji, user.id)
-    } else {
-      await addReaction(messageId, emoji, user.id)
-    }
+    // Implementation for reactions
+    console.log('Reaction:', messageId, emoji)
   }
 
   const formatTime = (timestamp: string) => {
@@ -130,7 +253,8 @@ export default function WorkspaceChatPage() {
   }
 
   const getChannelMessages = (channelId: string) => {
-    return workspace?.chat.filter(message => message.channelId === channelId) || []
+    if (!workspace?.chat) return []
+    return workspace.chat.filter(message => message.channelId === channelId)
   }
 
   const getCurrentChannel = () => {
@@ -202,22 +326,15 @@ export default function WorkspaceChatPage() {
 
           {/* Team members */}
           <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-            <h4 className="font-medium text-gray-900 dark:text-white mb-2 flex items-center gap-2">
+            <h4 className="font-medium text-gray-900 dark:text-white text-sm mb-2 flex items-center gap-2">
               <Users size={16} />
               Команда
             </h4>
             <div className="space-y-1">
-              {workspace.team.map((member) => (
-                <div key={member.id} className="flex items-center gap-2 text-sm">
-                  <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs">
-                    {member.name.charAt(0).toUpperCase()}
-                  </div>
-                  <span className="text-gray-700 dark:text-gray-300">{member.name}</span>
-                  {member.role === 'leader' && (
-                    <span className="text-xs bg-yellow-100 text-yellow-800 px-1 rounded">Лідер</span>
-                  )}
-                </div>
-              ))}
+              <div className="flex items-center gap-2 text-sm">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span className="text-gray-600 dark:text-gray-400">{user?.name || 'Ви'}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -225,189 +342,131 @@ export default function WorkspaceChatPage() {
         {/* Main chat area */}
         <div className="flex-1 flex flex-col">
           {/* Channel header */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-            <div className="flex items-center gap-3">
-              <Hash size={20} className="text-gray-500" />
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+            <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-semibold text-gray-900 dark:text-white">
+                <h2 className="font-semibold text-gray-900 dark:text-white">
                   {currentChannel?.name}
-                </h3>
+                </h2>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                   {currentChannel?.description}
                 </p>
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
-                <Users size={16} />
-              </button>
-              <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
-                <Settings size={16} />
-              </button>
-            </div>
-          </div>
-
-          {/* Messages area */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {channelMessages.length > 0 ? (
-              channelMessages.map((message) => (
-                <div key={message.id} className="group">
-                  <div className={`flex ${message.authorId === user?.id ? 'justify-end' : 'justify-start'}`}>
-                    <div className="max-w-xs lg:max-w-md">
-                      {replyToMessage && replyToMessage.id === message.id && (
-                        <div className="text-xs text-blue-500 mb-1">Відповідає на повідомлення</div>
-                      )}
-                      
-                      <div
-                        className={`px-4 py-2 rounded-lg relative ${
-                          message.isSystem
-                            ? 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-center mx-auto'
-                            : message.authorId === user?.id
-                            ? 'bg-blue-500 text-white'
-                            : 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white'
-                        }`}
-                      >
-                        {!message.isSystem && message.authorId !== user?.id && (
-                          <div className="flex items-center gap-2 mb-1">
-                            <User size={12} className="text-gray-500" />
-                            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                              {message.authorName}
-                            </span>
-                          </div>
-                        )}
-                        
-                        <p className="text-sm">{message.text}</p>
-                        
-                        {/* Reactions */}
-                        {message.reactions && message.reactions.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-2">
-                            {message.reactions.map((reaction, index) => (
-                              <button
-                                key={index}
-                                onClick={() => handleReaction(message.id, reaction.emoji)}
-                                className={`text-xs px-2 py-1 rounded-full border transition-colors ${
-                                  reaction.userIds.includes(user?.id || '')
-                                    ? 'bg-blue-100 border-blue-300 text-blue-700'
-                                    : 'bg-gray-100 border-gray-300 text-gray-600 hover:bg-gray-200'
-                                }`}
-                              >
-                                {reaction.emoji} {reaction.userIds.length}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                        
-                        <div className="flex items-center justify-end gap-1 mt-1">
-                          <Clock size={10} className="text-gray-400" />
-                          <span className="text-xs text-gray-400">
-                            {formatTime(message.timestamp)}
-                          </span>
-                        </div>
-                      </div>
-                      
-                      {/* Message actions */}
-                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 mt-1">
-                        <button
-                          onClick={() => setReplyToMessage(message)}
-                          className="text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 p-1"
-                        >
-                          Відповісти
-                        </button>
-                        <button
-                          onClick={() => {
-                            setTaskCreatorMessage(message.text)
-                            setShowTaskCreator(true)
-                          }}
-                          className="text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 p-1 flex items-center gap-1"
-                        >
-                          <CheckCircle size={12} />
-                          Задача
-                        </button>
-                        <button
-                          onClick={() => handleReaction(message.id, '👍')}
-                          className="text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 p-1"
-                        >
-                          👍
-                        </button>
-                        <button
-                          onClick={() => handleReaction(message.id, '❤️')}
-                          className="text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 p-1"
-                        >
-                          ❤️
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="text-center text-gray-500 dark:text-gray-400 py-8">
-                <MessageSquare size={48} className="mx-auto mb-4 text-gray-300" />
-                <p>Почніть розмову в каналі {currentChannel?.name}!</p>
-                <p className="text-sm mt-1">Напишіть перше повідомлення нижче</p>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Reply indicator */}
-          {replyToMessage && (
-            <div className="px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border-t border-blue-200 dark:border-blue-800">
-              <div className="flex items-center justify-between">
-                <div className="text-sm text-blue-600 dark:text-blue-400">
-                  Відповідаєте на повідомлення від {replyToMessage.authorName}
-                </div>
-                <button
-                  onClick={() => setReplyToMessage(null)}
-                  className="text-blue-500 hover:text-blue-700"
-                >
-                  ✕
+              <div className="flex items-center gap-2">
+                <button className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg">
+                  <Settings size={16} />
                 </button>
               </div>
             </div>
-          )}
+          </div>
+
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {channelMessages.map((message) => (
+              <div key={message.id} className="flex gap-3">
+                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                  {message.authorName.charAt(0).toUpperCase()}
+                </div>
+                
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-medium text-gray-900 dark:text-white text-sm">
+                      {message.authorName}
+                    </span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      {new Date(message.timestamp).toLocaleTimeString()}
+                    </span>
+                  </div>
+                  
+                  <div className="text-gray-700 dark:text-gray-300 text-sm">
+                    {message.text}
+                  </div>
+                  
+                  {/* Message actions */}
+                  <div className="flex items-center gap-2 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => handleReaction(message.id, '👍')}
+                      className="text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                    >
+                      <Smile size={14} />
+                    </button>
+                    <button
+                      onClick={() => setReplyToMessage(message)}
+                      className="text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                    >
+                      Відповісти
+                    </button>
+                    <button
+                      onClick={() => {
+                        setTaskCreatorMessage(message.text)
+                        setShowTaskCreator(true)
+                      }}
+                      className="text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                    >
+                      Створити задачу
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
 
           {/* Message input */}
-          <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+            {replyToMessage && (
+              <div className="mb-3 p-2 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-600 dark:text-gray-400">
+                    Відповідь на повідомлення {replyToMessage.authorName}
+                  </span>
+                  <button
+                    onClick={() => setReplyToMessage(null)}
+                    className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div className="text-gray-500 dark:text-gray-400 truncate">
+                  {replyToMessage.text}
+                </div>
+              </div>
+            )}
+            
             <form onSubmit={handleSendMessage} className="flex gap-2">
               <div className="flex-1 relative">
                 <input
                   type="text"
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder={`Напишіть повідомлення в #${currentChannel?.name}...`}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white pr-20"
+                  placeholder={`Написати в ${currentChannel?.name}...`}
+                  className="w-full px-4 py-2 pr-24 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                   disabled={isLoading}
                 />
+                
                 <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center gap-1">
                   <button
                     type="button"
-                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                    className="p-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded"
-                  >
-                    <Smile size={16} />
-                  </button>
-                  <button
-                    type="button"
-                    className="p-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded"
+                    className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                   >
                     <Paperclip size={16} />
                   </button>
                   <button
                     type="button"
-                    className="p-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded"
+                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                    className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                   >
-                    <AtSign size={16} />
+                    <Smile size={16} />
                   </button>
                 </div>
               </div>
+              
               <button
                 type="submit"
                 disabled={!newMessage.trim() || isLoading}
                 className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 <Send size={16} />
-                {isLoading ? 'Відправка...' : 'Надіслати'}
               </button>
             </form>
           </div>
@@ -415,14 +474,16 @@ export default function WorkspaceChatPage() {
       </div>
 
       {/* Task Creator Modal */}
-      <TaskCreator
-        isOpen={showTaskCreator}
-        onClose={() => {
-          setShowTaskCreator(false)
-          setTaskCreatorMessage('')
-        }}
-        messageText={taskCreatorMessage}
-      />
+      {showTaskCreator && (
+        <TaskCreator
+          isOpen={showTaskCreator}
+          onClose={() => {
+            setShowTaskCreator(false)
+            setTaskCreatorMessage('')
+          }}
+          messageText={taskCreatorMessage}
+        />
+      )}
     </ModernLayout>
   )
 } 

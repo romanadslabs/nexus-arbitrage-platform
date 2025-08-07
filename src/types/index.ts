@@ -119,6 +119,7 @@ export interface Campaign {
   id: string
   name: string
   offerId: string // ID офери замість просто назви
+  linkId: string // ID посилання офери
   accountId: string // ID аккаунта від фармера
   launcherId: string // ID арбітражника
   budget: number
