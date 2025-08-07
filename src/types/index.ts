@@ -110,6 +110,8 @@ export interface Account {
   password?: string
   twoFactorCode?: string
   backupCodes?: string[]
+  statusHistory?: string[] // Added statusHistory
+  trafficType?: string // Added trafficType
   createdAt: Date
   updatedAt: Date
 }
