@@ -15,34 +15,61 @@ const LOCAL_STORAGE_KEYS = {
 function getMockStats() {
   // This function simulates generating stats from locally stored data.
   // In a real scenario, you'd fetch this from a DB or a shared local file.
-  const totalAccounts = 2;
-  const activeAccounts = 1;
-  const totalExpenses = 150;
-  const totalCampaigns = 1;
-  const activeCampaigns = 1;
+  const totalAccounts = 47;
+  const activeAccounts = 32;
+  const totalExpenses = 15420;
+  const totalCampaigns = 89;
+  const activeCampaigns = 67;
 
   const platformBreakdown = {
-    Facebook: 1,
-    'Google Ads': 1,
+    'Facebook': 18,
+    'Google Ads': 12,
+    'TikTok': 8,
+    'Instagram': 6,
+    'YouTube': 3
   };
 
   const statusBreakdown = {
-    active: 1,
-    pending: 1,
+    'active': 32,
+    'pending': 8,
+    'blocked': 5,
+    'suspended': 2
   };
 
   const farmingStats = {
-    day1: 0,
-    day2: 0,
-    day3: 0,
-    total: 0,
+    day1: 12,
+    day2: 8,
+    day3: 5,
+    total: 25
   };
 
   const blockedStats = {
-    pp: 0,
-    system: 0,
-    passport: 0,
-    total: 0,
+    pp: 3,
+    system: 1,
+    passport: 1,
+    total: 5
+  };
+
+  const revenueStats = {
+    totalRevenue: 45680,
+    totalProfit: 30260,
+    averageROI: 196.3,
+    bestPerformingCampaign: 'TikTok Dating - ROI 342%'
+  };
+
+  const performanceMetrics = {
+    totalClicks: 125430,
+    totalConversions: 3420,
+    averageCTR: 2.73,
+    averageCPC: 0.89,
+    averageCPA: 4.51
+  };
+
+  const recentPerformance = {
+    todayRevenue: 1240,
+    yesterdayRevenue: 1180,
+    weeklyGrowth: 12.5,
+    monthlyGrowth: 23.8
   };
 
   return {
@@ -55,10 +82,12 @@ function getMockStats() {
     statusBreakdown,
     farmingStats,
     blockedStats,
+    revenueStats,
+    performanceMetrics,
+    recentPerformance,
     efficiency: totalAccounts > 0 ? (activeAccounts / totalAccounts) * 100 : 0,
   };
 }
-
 
 export async function GET(request: Request) {
   try {

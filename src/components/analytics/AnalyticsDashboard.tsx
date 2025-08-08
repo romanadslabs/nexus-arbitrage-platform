@@ -111,7 +111,7 @@ export default function AnalyticsDashboard() {
               </p>
             </div>
             {(activeTab === 'overview' || activeTab === 'charts') && (
-              <DetailedAnalytics activeTab={activeTab} />
+              <DetailedAnalytics />
             )}
             {activeTab === 'reports' && (
               <div className="text-center py-8">

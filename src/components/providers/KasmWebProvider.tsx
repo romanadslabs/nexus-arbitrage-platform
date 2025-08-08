@@ -167,11 +167,10 @@ export function KasmWebProvider({ children }: { children: React.ReactNode }) {
       
       // Створюємо браузерний профіль на основі даних аккаунта
       const browserProfile = kasmWebClient.createBrowserProfile({
-        userAgent: account.browserProfile?.userAgent,
-        screenResolution: account.browserProfile?.screenResolution,
-        timezone: account.browserProfile?.timezone,
-        language: account.browserProfile?.language,
-        geolocation: account.browserProfile?.geolocation
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        screenResolution: '1920x1080',
+        timezone: 'Europe/Kiev',
+        language: 'uk-UA',
       })
 
       const sessionName = `${account.platform}-${account.name}-${Date.now()}`

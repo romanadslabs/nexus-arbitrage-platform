@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus Arbitrage Platform - Демо</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+        
+        .container {
+            text-align: center;
+            max-width: 600px;
+            padding: 2rem;
+        }
+        
+        .logo {
+            font-size: 3rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+        }
+        
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+        
+        .feature {
+            background: rgba(255,255,255,0.1);
+            padding: 1.5rem;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .feature h3 {
+            margin-bottom: 0.5rem;
+            color: #ffd700;
+        }
+        
+        .status {
+            background: rgba(0,255,0,0.2);
+            padding: 1rem;
+            border-radius: 10px;
+            margin: 2rem 0;
+            border: 1px solid rgba(0,255,0,0.3);
+        }
+        
+        .button {
+            display: inline-block;
+            background: #ffd700;
+            color: #333;
+            padding: 1rem 2rem;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: bold;
+            margin: 1rem;
+            transition: transform 0.3s ease;
+        }
+        
+        .button:hover {
+            transform: translateY(-2px);
+        }
+        
+        .version {
+            position: fixed;
+            bottom: 1rem;
+            right: 1rem;
+            background: rgba(0,0,0,0.3);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🚀 Nexus</div>
+        <div class="subtitle">Платформа для арбітражу та управління рекламними кампаніями</div>
+        
+        <div class="status">
+            ✅ Сайт успішно зібрано та готовий до деплою!
+        </div>
+        
+        <div class="features">
+            <div class="feature">
+                <h3>📊 Аналітика</h3>
+                <p>Детальна аналітика кампаній та статистика</p>
+            </div>
+            <div class="feature">
+                <h3>🎯 Оффери</h3>
+                <p>Управління офферами та посиланнями</p>
+            </div>
+            <div class="feature">
+                <h3>💬 Чат</h3>
+                <p>Командний чат з гілками та завданнями</p>
+            </div>
+            <div class="feature">
+                <h3>👥 Команда</h3>
+                <p>Управління командою та робочими просторами</p>
+            </div>
+        </div>
+        
+        <div>
+            <a href="https://github.com/romanadslabs/nexus-arbitrage-platform" class="button" target="_blank">
+                📁 GitHub Repository
+            </a>
+            <a href="https://app.all-hands.dev" class="button" target="_blank">
+                🚀 Deploy on All-Hands
+            </a>
+        </div>
+    </div>
+    
+    <div class="version">
+        v2.0.0 - Ready for Production
+    </div>
+</body>
+</html> 

@@ -6,7 +6,7 @@ import { Eye, EyeOff, Mail, Lock, User, Phone, MapPin, Calendar, Globe, FileText
 import { User as UserType, Project } from '@/types'
 
 export default function RegistrationForm() {
-  const { signUp } = useAuth()
+  const { registerUser } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [currentStep, setCurrentStep] = useState(1)
@@ -67,7 +67,7 @@ export default function RegistrationForm() {
         updatedAt: new Date(),
       }
 
-      await signUp(formData.email, formData.password, formData.name, formData.role, userData)
+      await registerUser({ name: formData.name, email: formData.email, password: formData.password, role: formData.role })
     } catch (error) {
       console.error('Registration error:', error)
     } finally {

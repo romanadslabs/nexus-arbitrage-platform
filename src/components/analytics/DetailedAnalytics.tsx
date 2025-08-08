@@ -1,35 +1,31 @@
 'use client'
 
-import React from 'react';
-import { useData } from '@/components/providers/DataProvider';
-import AccountsAnalytics from './AccountsAnalytics';
-import AccountsCharts from './AccountsCharts';
+import React from 'react'
 
-interface DetailedAnalyticsProps {
-  activeTab: 'overview' | 'charts';
-}
-
-export default function DetailedAnalytics({ activeTab }: DetailedAnalyticsProps) {
-  const { accounts, expenses, isLoading } = useData();
-
-  if (isLoading.accounts || isLoading.expenses) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Завантаження детальних даних...</p>
+export default function DetailedAnalytics() {
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Детальна аналітика
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400 mt-1">
+            Детальна аналітика та звіти
+          </p>
         </div>
       </div>
-    );
-  }
 
-  if (activeTab === 'overview') {
-    return <AccountsAnalytics accounts={accounts} expenses={expenses} userRole="leader" />;
-  }
-
-  if (activeTab === 'charts') {
-    return <AccountsCharts accounts={accounts} expenses={expenses} />;
-  }
-
-  return null;
+      <div className="bg-white dark:bg-gray-800 rounded-lg p-6">
+        <div className="text-center">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+            Тимчасово недоступно
+          </h3>
+          <p className="text-gray-600 dark:text-gray-400">
+            Цей розділ тимчасово недоступний. Ведуться технічні роботи.
+          </p>
+        </div>
+      </div>
+    </div>
+  )
 } 

@@ -320,10 +320,18 @@ export default function ChatManager() {
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Button variant="outline" icon={Search} size="sm" />
-                  <Button variant="outline" icon={Phone} size="sm" />
-                  <Button variant="outline" icon={Video} size="sm" />
-                  <Button variant="outline" icon={MoreVertical} size="sm" />
+                  <Button variant="outline" icon={Search} size="sm">
+                    <Search size={16} />
+                  </Button>
+                  <Button variant="outline" icon={Phone} size="sm">
+                    <Phone size={16} />
+                  </Button>
+                  <Button variant="outline" icon={Video} size="sm">
+                    <Video size={16} />
+                  </Button>
+                  <Button variant="outline" icon={MoreVertical} size="sm">
+                    <MoreVertical size={16} />
+                  </Button>
                 </div>
               </div>
             </div>

@@ -9,10 +9,11 @@ interface LoginFormProps {
 }
 
 export default function LoginForm({ isRegister = false }: LoginFormProps) {
-  const { signIn, signUp } = useAuth()
+  const { login, registerUser } = useAuth()
   const [isLogin, setIsLogin] = useState(!isRegister)
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -26,12 +27,13 @@ export default function LoginForm({ isRegister = false }: LoginFormProps) {
 
     try {
       if (isLogin) {
-        await signIn(formData.email, formData.password)
+        await login({ email: formData.email, password: formData.password })
       } else {
-        await signUp(formData.email, formData.password, formData.name, formData.role)
+        await registerUser({ name: formData.name, email: formData.email, password: formData.password, role: formData.role })
       }
     } catch (error) {
       console.error('Auth error:', error)
+      setError('Помилка авторизації')
     } finally {
       setLoading(false)
     }
@@ -49,7 +51,7 @@ export default function LoginForm({ isRegister = false }: LoginFormProps) {
       }
       
       // Симулюємо вхід
-      await signIn(mockUser.email, 'password123')
+      await login({ email: mockUser.email, password: 'password123' })
     } catch (error) {
       console.error('Quick login error:', error)
     } finally {

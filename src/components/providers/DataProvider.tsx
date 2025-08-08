@@ -259,13 +259,13 @@ const DataContext = createContext<DataContextType | undefined>(undefined)
 
 // Утиліти для localStorage
 const localStorageUtils = {
-  get: <T>(key: string, defaultValue: T): T => {
+  get: function<T>(key: string, defaultValue: T): T {
     try {
       if (typeof window === 'undefined') return defaultValue
       const item = localStorage.getItem(key)
       return item ? JSON.parse(item) : defaultValue
     } catch (error) {
-      console.error(`Error reading from localStorage (${key}):`, error)
+      console.error(`Error reading localStorage key "${key}":`, error)
       return defaultValue
     }
   },
