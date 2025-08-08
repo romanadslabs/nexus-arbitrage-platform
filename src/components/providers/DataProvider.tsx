@@ -1059,6 +1059,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>
 }
 
+export default DataProvider;
+
 // Хук для використання даних
 export function useData() {
   const context = useContext(DataContext)

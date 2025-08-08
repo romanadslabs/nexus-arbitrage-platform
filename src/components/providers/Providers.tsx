@@ -6,6 +6,7 @@ import { AuthProvider } from './AuthProvider'
 import { QueryProvider } from './QueryProvider'
 import { DataProvider } from './DataProvider'
 import { MultiBrowserProvider } from './MultiBrowserProvider'
+import { KasmWebProvider } from './KasmWebProvider'
 import { Toaster } from 'react-hot-toast'
 import { setupErrorHandling } from '@/lib/errorHandler'
 
@@ -21,6 +22,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <AuthProvider>
           <DataProvider>
             <MultiBrowserProvider>
+              <KasmWebProvider>
                 {children}
                 <Toaster 
                   position="top-right"
@@ -32,6 +34,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
                     },
                   }}
                 />
+              </KasmWebProvider>
             </MultiBrowserProvider>
           </DataProvider>
         </AuthProvider>

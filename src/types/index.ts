@@ -89,31 +89,40 @@ export interface Offer {
   description?: string
 }
 
-// Аккаунти, створені фармерами
+export interface StatusChangeEvent {
+  status: string;
+  changedBy: string;
+  changedAt: Date;
+}
+
 export interface Account {
-  id: string
-  name: string
-  email: string
-  phone: string
-  platform: string
-  status: 'farming_day_1' | 'farming_day_2' | 'farming_day_3' | 'blocked_pp' | 'blocked_system' | 'blocked_passport' | 'ready_for_ads' | 'dead' | 'sold'
-  category: string
-  farmerId: string
-  launcherId?: string
-  priority: 'low' | 'medium' | 'high' | 'critical'
-  tags: string[]
-  comments?: string
-  notes?: string; 
-  aiEvaluation?: any
-  automations?: any[]
-  // Безпека
-  password?: string
-  twoFactorCode?: string
-  backupCodes?: string[]
-  statusHistory?: string[] // Added statusHistory
-  trafficType?: string // Added trafficType
-  createdAt: Date
-  updatedAt: Date
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  platform: string;
+  status: string;
+  category: string;
+  statusHistory: StatusChangeEvent[];
+  trafficType: 'paid' | 'organic' | 'other';
+  farmerId?: string;
+  priority: string;
+  tags: string[];
+  comments: Comment[];
+  aiEvaluation: string;
+  automations: string[];
+  twoFactorCode?: string;
+  backupCodes?: string[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Comment {
+  id: string;
+  text: string;
+  authorId: string;
+  authorName: string;
+  createdAt: Date;
 }
 
 // Кампанії, запущені арбітражниками
