@@ -66,7 +66,7 @@ export default function UnifiedDataView({ defaultTable = 'accounts' }: UnifiedDa
       case 'proxies': {
         const data = Array.isArray(proxies) ? proxies : []
         return { data, loading: false, error: null as string | null, refetch: () => {}, total: data.length }
-      }
+  }
       case 'campaigns': {
         const data = Array.isArray(campaigns) ? campaigns : []
         return { data, loading: false, error: null as string | null, refetch: () => {}, total: data.length }

@@ -1,16 +1,15 @@
 'use client'
 
 import React from 'react'
-import ModernLayout from '@/components/layout/ModernLayout'
-import ProtectedRoute from '@/components/auth/ProtectedRoute'
 import ChatManager from '@/components/chat/ChatManager'
+import { FadeIn, SlideUp } from '@/components/ui/Animations'
 
 export default function ChatPage() {
     return (
-        <ProtectedRoute>
-            <ModernLayout>
+    <FadeIn>
+      <SlideUp>
                 <ChatManager />
-            </ModernLayout>
-        </ProtectedRoute>
-    )
+      </SlideUp>
+    </FadeIn>
+  )
 } 

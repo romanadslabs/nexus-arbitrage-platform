@@ -1,5 +1,5 @@
 import React from 'react'
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 
 interface AnimatedCardProps {
   children: React.ReactNode
@@ -14,6 +14,10 @@ export default function AnimatedCard({
   className = '',
   onClick 
 }: AnimatedCardProps) {
+  const prefersReducedMotion = useReducedMotion()
+  if (prefersReducedMotion) {
+    return <div className={className} onClick={onClick}>{children}</div>
+  }
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -21,7 +25,7 @@ export default function AnimatedCard({
       transition={{ 
         duration: 0.5, 
         delay: delay * 0.1,
-        ease: "easeOut"
+        ease: 'easeOut'
       }}
       whileHover={{ 
         y: -5,
@@ -29,6 +33,7 @@ export default function AnimatedCard({
       }}
       className={className}
       onClick={onClick}
+      style={{ willChange: 'transform, opacity' }}
     >
       {children}
     </motion.div>

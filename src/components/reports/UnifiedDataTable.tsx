@@ -191,12 +191,12 @@ export default function UnifiedDataTable({
   return (
     <div className="w-full bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
       {/* Заголовок */}
-      <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+      <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white">{title}</h3>
+            <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">{title}</h3>
             {description && (
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
                 {description}
               </p>
             )}
@@ -224,9 +224,9 @@ export default function UnifiedDataTable({
         </div>
       </div>
 
-      <div className="p-6">
+      <div className="p-4 sm:p-6">
         {/* Пошук та фільтри */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
@@ -234,7 +234,7 @@ export default function UnifiedDataTable({
               placeholder="Пошук по всіх полях..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
             />
           </div>
           
@@ -247,7 +247,7 @@ export default function UnifiedDataTable({
                   key={column.key}
                   value={filters[column.key] || ''}
                   onChange={(e) => handleFilterChange(column.key, e.target.value)}
-                  className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="px-2 sm:px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                 >
                   <option value="">{column.label}</option>
                   {getUniqueValues(column.key).map(value => (
@@ -262,13 +262,13 @@ export default function UnifiedDataTable({
 
         {/* Таблиця */}
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse border border-gray-200 dark:border-gray-700">
+          <table className="w-full min-w-[720px] border-collapse border border-gray-200 dark:border-gray-700">
             <thead>
               <tr className="bg-gray-50 dark:bg-gray-800">
                 {columns.map(column => (
                   <th
                     key={column.key}
-                    className={`px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700 ${
+                    className={`px-3 sm:px-4 py-2 sm:py-3 text-left text-[11px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10 bg-gray-50 dark:bg-gray-800 ${
                       column.sortable ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700' : ''
                     }`}
                     onClick={() => column.sortable && handleSort(column.key)}
@@ -285,7 +285,7 @@ export default function UnifiedDataTable({
                   </th>
                 ))}
                 {(onEdit || onDelete || onView) && (
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700 w-20">
+                  <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-[11px] sm:text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10 bg-gray-50 dark:bg-gray-800 w-20">
                     Дії
                   </th>
                 )}
@@ -294,16 +294,16 @@ export default function UnifiedDataTable({
             <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
               {isLoading ? (
                 <tr>
-                  <td colSpan={columns.length + (onEdit || onDelete || onView ? 1 : 0)} className="px-4 py-8 text-center">
-                    <div className="flex items-center justify-center">
-                      <RefreshCw className="h-6 w-6 animate-spin mr-2" />
+                  <td colSpan={columns.length + (onEdit || onDelete || onView ? 1 : 0)} className="px-3 sm:px-4 py-6 sm:py-8 text-center">
+                    <div className="flex items-center justify-center text-sm">
+                      <RefreshCw className="h-5 w-5 sm:h-6 sm:w-6 animate-spin mr-2" />
                       Завантаження...
                     </div>
                   </td>
                 </tr>
               ) : paginatedData.length === 0 ? (
                 <tr>
-                  <td colSpan={columns.length + (onEdit || onDelete || onView ? 1 : 0)} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">
+                  <td colSpan={columns.length + (onEdit || onDelete || onView ? 1 : 0)} className="px-3 sm:px-4 py-6 sm:py-8 text-center text-gray-500 dark:text-gray-400 text-sm">
                     Немає даних для відображення
                   </td>
                 </tr>
@@ -311,12 +311,12 @@ export default function UnifiedDataTable({
                 paginatedData.map((item, index) => (
                   <tr key={item.id || index} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                     {columns.map(column => (
-                      <td key={column.key} className="px-4 py-3 text-sm text-gray-900 dark:text-white">
+                      <td key={column.key} className="px-3 sm:px-4 py-2 sm:py-3 text-[12px] sm:text-sm text-gray-900 dark:text-white break-words">
                         {formatValue(item[column.key], column)}
                       </td>
                     ))}
                     {(onEdit || onDelete || onView) && (
-                      <td className="px-4 py-3 text-sm">
+                      <td className="px-3 sm:px-4 py-2 sm:py-3 text-sm">
                         <div className="flex items-center gap-1">
                           {onView && (
                             <button
@@ -354,15 +354,15 @@ export default function UnifiedDataTable({
 
         {/* Пагінація */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between mt-6">
-            <div className="text-sm text-gray-600 dark:text-gray-400">
+          <div className="flex items-center justify-between mt-4 sm:mt-6">
+            <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
               Показано {startIndex + 1}-{Math.min(endIndex, filteredData.length)} з {filteredData.length} записів
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-2">
               <button
                 onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
                 disabled={currentPage === 1}
-                className="px-3 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-2 sm:px-3 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Попередня
               </button>
@@ -373,7 +373,7 @@ export default function UnifiedDataTable({
                   <button
                     key={page}
                     onClick={() => setCurrentPage(page)}
-                    className={`px-3 py-2 text-sm font-medium rounded-md ${
+                    className={`px-2 sm:px-3 py-2 text-sm font-medium rounded-md ${
                       currentPage === page
                         ? 'bg-blue-600 text-white'
                         : 'text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
@@ -387,7 +387,7 @@ export default function UnifiedDataTable({
               <button
                 onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                 disabled={currentPage === totalPages}
-                className="px-3 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-2 sm:px-3 py-2 text-sm font-medium text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Наступна
               </button>
