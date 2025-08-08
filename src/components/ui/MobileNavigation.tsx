@@ -70,7 +70,7 @@ export default function MobileNavigation({
 
         {/* Navigation Panel */}
         <motion.div
-          className="absolute right-0 top-0 h-full w-80 max-w-[85vw] bg-white dark:bg-gray-900 shadow-2xl"
+          className="absolute right-0 top-0 h-full w-80 max-w-[90vw] bg-white dark:bg-gray-900 shadow-2xl flex flex-col overflow-hidden"
           initial={{ x: '100%' }}
           animate={{ x: 0 }}
           exit={{ x: '100%' }}
@@ -155,8 +155,8 @@ export default function MobileNavigation({
             </div>
           </div>
 
-          {/* Main Navigation */}
-          <div className="flex-1 overflow-y-auto">
+          {/* Main Navigation (scrollable) */}
+          <div className="flex-1 overflow-y-auto overscroll-contain">
             <div className="p-6">
               <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">
                 📱 Навігація
@@ -191,7 +191,7 @@ export default function MobileNavigation({
                             ? 'bg-blue-100 dark:bg-blue-900/50' 
                             : 'bg-gray-100 dark:bg-gray-800'
                           }
-                        `}>
+                       `}>
                           <Icon className={`w-4 h-4 ${isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400'}`} />
                         </div>
                         <span className="text-sm font-medium">

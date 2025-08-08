@@ -10,7 +10,7 @@ export default function ChatPage() {
         <ProtectedRoute>
             <ModernLayout>
                 <ChatManager />
-            </ModernLayout>
+      </ModernLayout>
         </ProtectedRoute>
-    )
+  )
 } 

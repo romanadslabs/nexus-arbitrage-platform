@@ -325,9 +325,9 @@ export default function ChatManager() {
   }
 
   return (
-    <div className="h-screen flex bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen flex flex-col md:flex-row bg-gray-50 dark:bg-gray-900">
       {/* Бічна панель з робочими просторами */}
-      <div className="w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
+      <div className="hidden md:flex w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex-col">
         {/* Header */}
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between">
@@ -404,17 +404,17 @@ export default function ChatManager() {
         {currentWorkspace ? (
           <>
             {/* Header чату */}
-            <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-4">
+            <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-3 sm:p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-medium">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-medium">
                     {currentWorkspace.name.charAt(0)}
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900 dark:text-white">
+                    <h3 className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base">
                       {currentWorkspace.name}
                     </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                    <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                       {currentWorkspace.members.length} учасників
                     </p>
                   </div>
@@ -431,7 +431,7 @@ export default function ChatManager() {
             </div>
 
             {/* Повідомлення */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4 pb-24">
               {messages.map((message, index) => {
                 const isOwnMessage = message.senderId === user?.id
                 const showDate = index === 0 || 
@@ -452,26 +452,26 @@ export default function ChatManager() {
                       animate={{ opacity: 1, y: 0 }}
                       className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
                     >
-                      <div className={`max-w-xs lg:max-w-md ${isOwnMessage ? 'order-2' : 'order-1'}`}>
+                      <div className={`max-w-[85vw] sm:max-w-sm lg:max-w-md ${isOwnMessage ? 'order-2' : 'order-1'}`}>
                         {!isOwnMessage && (
                           <div className="flex items-center space-x-2 mb-1">
-                            <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center text-xs text-white">
+                            <div className="w-5 h-5 sm:w-6 sm:h-6 bg-blue-500 rounded-full flex items-center justify-center text-xs text-white">
                               {message.senderName.charAt(0)}
                             </div>
-                            <span className="text-sm font-medium text-gray-900 dark:text-white">
+                            <span className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">
                               {message.senderName}
                             </span>
                           </div>
                         )}
                         
-                        <div className={`rounded-lg px-4 py-2 ${
+                        <div className={`rounded-lg px-3 py-2 sm:px-4 sm:py-2 ${
                           isOwnMessage 
                             ? 'bg-blue-500 text-white' 
                             : 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600'
                         }`}>
-                          <div className="text-sm break-words whitespace-pre-wrap">{renderContent(message.content)}</div>
+                          <div className="text-xs sm:text-sm break-words whitespace-pre-wrap">{renderContent(message.content)}</div>
                           {message.replyTo && (
-                            <div className="mt-2 text-xs text-gray-200 dark:text-gray-300/80">
+                            <div className="mt-2 text-[10px] sm:text-xs text-gray-200 dark:text-gray-300/80">
                               У відповідь на повідомлення #{message.replyTo}
                             </div>
                           )}
@@ -482,7 +482,7 @@ export default function ChatManager() {
                               {message.reactions.map((reaction, idx) => (
                                 <span
                                   key={idx}
-                                  className="bg-gray-100 dark:bg-gray-600 text-xs px-2 py-1 rounded-full"
+                                  className="bg-gray-100 dark:bg-gray-600 text-[10px] sm:text-xs px-2 py-1 rounded-full"
                                 >
                                   {reaction.emoji}
                                 </span>
@@ -494,14 +494,14 @@ export default function ChatManager() {
                         <div className={`flex items-center space-x-2 mt-1 ${
                           isOwnMessage ? 'justify-end' : 'justify-start'
                         }`}>
-                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                          <span className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
                             {formatTime(message.timestamp)}
                           </span>
                           {isOwnMessage && (
                             <CheckCheck className="w-3 h-3 text-blue-500" />
                           )}
                           {message.isEdited && (
-                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                            <span className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
                               (ред.)
                             </span>
                           )}
@@ -562,7 +562,7 @@ export default function ChatManager() {
             </div>
 
             {/* Поле введення */}
-            <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4">
+            <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-3 sm:p-4 sticky bottom-0 z-10">
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setShowRefPicker(v => !v)}
@@ -576,7 +576,7 @@ export default function ChatManager() {
                 </button>
                 <div className="flex-1">
                   {replyTo && (
-                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Відповідь на: {replyTo.content.slice(0,50)} <button className="ml-2 underline" onClick={() => setReplyTo(null)}>скасувати</button></div>
+                    <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 mb-1">Відповідь на: {replyTo.content.slice(0,50)} <button className="ml-2 underline" onClick={() => setReplyTo(null)}>скасувати</button></div>
                   )}
                   <input
                     type="text"
@@ -584,7 +584,7 @@ export default function ChatManager() {
                     onChange={(e) => setNewMessage(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
                     placeholder="Напишіть повідомлення... (можна вставляти [account:id|Назва], [card:id|Номер] тощо)"
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    className="w-full px-3 sm:px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
                   />
                 </div>
                 <button
