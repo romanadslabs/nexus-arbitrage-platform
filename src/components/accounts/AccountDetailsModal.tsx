@@ -2,7 +2,7 @@
 
 import React from 'react'
 import { motion } from 'framer-motion'
-import { X, Edit, Download, User, Calendar, MessageSquare, History, Tag, Shield, TrafficCone, KeyRound } from 'lucide-react'
+import { X, Edit, Download, User, Calendar, MessageSquare, History, Tag, Shield, AlertTriangle, KeyRound } from 'lucide-react'
 import { Account } from '@/components/providers/DataProvider'
 
 interface AccountDetailsModalProps {
@@ -62,7 +62,7 @@ export default function AccountDetailsModal({ isOpen, onClose, onEdit, account }
                         <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-6">
                             <DetailItem icon={User} label="Платформа" value={account.platform} />
                             <DetailItem icon={Shield} label="Статус" value={account.status} />
-                            <DetailItem icon={TrafficCone} label="Тип трафіку" value={account.trafficType} />
+                            <DetailItem icon={AlertTriangle} label="Тип трафіку" value={account.trafficType} />
                             <DetailItem icon={User} label="Пріоритет" value={account.priority} />
                             <DetailItem icon={User} label="Відповідальний" value={account.farmerId || 'Не призначено'} />
                             <DetailItem icon={Calendar} label="Створено" value={new Date(account.createdAt).toLocaleString('uk-UA')} />

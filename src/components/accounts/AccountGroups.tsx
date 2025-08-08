@@ -158,9 +158,8 @@ export default function AccountGroups({
     <AccountCard
       key={account.id}
       account={account}
-      onUpdate={onUpdate}
-      onDelete={onDelete}
-      onTransfer={onTransfer}
+      statusConfig={{ label: getGroupLabel(account.status), color: getGroupColor(account.status) }}
+      onDelete={() => onDelete(account.id)}
       onEdit={() => {}} // Додаємо пусту функцію для onEdit
     />
   )
