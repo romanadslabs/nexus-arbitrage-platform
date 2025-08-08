@@ -1,10 +1,11 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import Sidebar from './Sidebar'
 import MobileNavigation from '@/components/ui/MobileNavigation'
 import { useAuth } from '@/components/providers/AuthProvider'
+import Link from 'next/link'
 import { Activity, LayoutDashboard, CheckSquare, Users, MessageCircle, Home, Target, ExternalLink, CreditCard, BarChart3, Settings } from 'lucide-react'
 
 interface ModernLayoutProps {
@@ -17,11 +18,19 @@ export default function ModernLayout({ children, title, description }: ModernLay
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false)
   const { user, logout } = useAuth()
+  const prefersReducedMotion = useReducedMotion()
 
   useEffect(() => {
     const storedPreference = localStorage.getItem('sidebarCollapsed')
     if (storedPreference) {
-      setIsSidebarCollapsed(JSON.parse(storedPreference))
+      try {
+        const parsed = JSON.parse(storedPreference)
+        setIsSidebarCollapsed(Boolean(parsed))
+      } catch (error) {
+        console.warn('Failed to parse sidebarCollapsed from localStorage, resetting to default.', error)
+        localStorage.removeItem('sidebarCollapsed')
+        setIsSidebarCollapsed(false)
+      }
     }
   }, [])
 
@@ -61,7 +70,7 @@ export default function ModernLayout({ children, title, description }: ModernLay
 
       {/* Mobile Topbar */}
       <header className="lg:hidden sticky top-0 z-40 bg-white/90 dark:bg-gray-900/90 backdrop-blur border-b border-gray-200 dark:border-gray-800">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 py-3 flex items-center justify-between">
           <button
             onClick={() => setIsMobileNavOpen(true)}
             className="p-2 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200"
@@ -71,12 +80,12 @@ export default function ModernLayout({ children, title, description }: ModernLay
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
             </svg>
           </button>
-          <div className="flex items-center gap-2">
+          <Link href="/workspace/dashboard" className="flex items-center gap-2" aria-label="Перейти на дашборд робочого простору">
             <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
               <Activity className="w-4 h-4 text-white" />
             </div>
             <span className="font-semibold text-gray-900 dark:text-white">Nexus</span>
-          </div>
+          </Link>
           <div className="text-sm text-gray-500 dark:text-gray-400">
             {user?.name || 'Користувач'}
           </div>
@@ -85,12 +94,12 @@ export default function ModernLayout({ children, title, description }: ModernLay
 
       {/* Main content with responsive left padding on desktop only */}
       <main className={`transition-all duration-300 ${isSidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'} pl-0`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 sm:py-6">
           {title && (
             <motion.div
-              className="mb-4 sm:mb-6"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
+              className="mb-3 sm:mb-4"
+              initial={prefersReducedMotion ? undefined : { opacity: 0, y: 20 }}
+              animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
             >
               <h1 className="text-xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-1 sm:mb-2">
@@ -104,8 +113,8 @@ export default function ModernLayout({ children, title, description }: ModernLay
             </motion.div>
           )}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={prefersReducedMotion ? undefined : { opacity: 0, y: 20 }}
+            animate={prefersReducedMotion ? undefined : { opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
           >
             {children}

@@ -238,6 +238,45 @@ export default function AdvancedTaskManager({ workspaceId, currentUser, currentU
     tags: [] as string[],
   })
 
+  // NEW: view mode, keyboard selection, auto-advance
+  const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list')
+  const [selectedIndex, setSelectedIndex] = useState<number>(0)
+  const [autoAdvance, setAutoAdvance] = useState<boolean>(true)
+  
+  // NEW: task templates for marketing/arbitrage flows
+  const TASK_TEMPLATES = [
+    {
+      label: 'Запуск FB кампанії',
+      fill: {
+        title: 'Запуск FB кампанії: продукт X',
+        description: 'Креативи, аудиторії, піксель, A/B, ретаргетинг',
+        priority: 'high' as Task['priority'],
+        status: 'todo' as Task['status'],
+        tags: ['facebook', 'launch', 'a/b']
+      }
+    },
+    {
+      label: 'Фармінг Google Ads акаунтів',
+      fill: {
+        title: 'Фармінг 10 Google Ads акаунтів',
+        description: '2FA, резервні коди, перевірка білінга',
+        priority: 'critical' as Task['priority'],
+        status: 'todo' as Task['status'],
+        tags: ['google ads', 'фармінг', '2fa']
+      }
+    },
+    {
+      label: 'Виробництво креативів',
+      fill: {
+        title: 'Креативи для кампанії Y',
+        description: 'Банери/відео, 3 варіанти, 2 формати',
+        priority: 'medium' as Task['priority'],
+        status: 'todo' as Task['status'],
+        tags: ['creative', 'design']
+      }
+    }
+  ]
+
   // Синхронізація з Workspace (localStorage)
   useEffect(() => {
     if (workspace?.tasks) {
@@ -295,7 +334,38 @@ export default function AdvancedTaskManager({ workspaceId, currentUser, currentU
     }
 
     setFilteredTasks(filtered)
+    // reset selection if out of bounds
+    setSelectedIndex(i => Math.min(i, Math.max(filtered.length - 1, 0)))
   }, [tasks, searchQuery, statusFilter, priorityFilter, assigneeFilter])
+
+  // NEW: keyboard shortcuts J/K/Enter
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return
+      if (!filteredTasks.length) return
+      if (e.key === 'j' || e.key === 'ArrowDown') {
+        e.preventDefault()
+        setSelectedIndex(i => Math.min(i + 1, filteredTasks.length - 1))
+      }
+      if (e.key === 'k' || e.key === 'ArrowUp') {
+        e.preventDefault()
+        setSelectedIndex(i => Math.max(i - 1, 0))
+      }
+      if (e.key === 'Enter') {
+        const t = filteredTasks[selectedIndex]
+        if (t) {
+          const next = nextStatus(t.status)
+          handleStatusChange(t.id, next)
+          if (autoAdvance) {
+            setSelectedIndex(i => Math.min(i + 1, filteredTasks.length - 1))
+          }
+        }
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [filteredTasks, selectedIndex, autoAdvance])
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -333,6 +403,27 @@ export default function AdvancedTaskManager({ workspaceId, currentUser, currentU
     const hours = Math.floor(minutes / 60)
     const mins = minutes % 60
     return `${hours}г ${mins}хв`
+  }
+
+  // NEW: helper to compute SLA indicator
+  const getSLA = (dueDate: Date) => {
+    const msPerDay = 24 * 60 * 60 * 1000
+    const today = new Date()
+    const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()
+    const startOfDue = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate()).getTime()
+    const diffDays = Math.floor((startOfDue - startOfToday) / msPerDay)
+
+    if (diffDays < 0) return { label: `Прострочено ${Math.abs(diffDays)}д`, className: 'text-red-600 dark:text-red-400' }
+    if (diffDays === 0) return { label: 'Сьогодні', className: 'text-orange-600 dark:text-orange-400' }
+    if (diffDays <= 2) return { label: `Через ${diffDays}д`, className: 'text-yellow-600 dark:text-yellow-400' }
+    return { label: `Через ${diffDays}д`, className: 'text-gray-500 dark:text-gray-400' }
+  }
+
+  // NEW: status pipeline helper
+  const nextStatus = (s: Task['status']): Task['status'] => {
+    const order: Task['status'][] = ['todo', 'in_progress', 'review', 'done']
+    const idx = order.indexOf(s)
+    return order[Math.min(idx + 1, order.length - 1)]
   }
 
   const handleTaskClick = (task: Task) => {
@@ -420,13 +511,31 @@ export default function AdvancedTaskManager({ workspaceId, currentUser, currentU
               {tasks.length} задач • {tasks.filter(t => t.status === 'done').length} завершено
             </p>
           </div>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Нова задача</span>
-          </button>
+          <div className="flex items-center gap-2">
+            {/* NEW: view toggle */}
+            <div className="inline-flex items-center rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <button
+                onClick={() => setViewMode('list')}
+                className={`px-3 py-2 text-sm ${viewMode==='list' ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-300'}`}
+              >Список</button>
+              <button
+                onClick={() => setViewMode('kanban')}
+                className={`px-3 py-2 text-sm ${viewMode==='kanban' ? 'bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white' : 'text-gray-600 dark:text-gray-300'}`}
+              >Канбан</button>
+            </div>
+            {/* NEW: auto-advance toggle */}
+            <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+              <input type="checkbox" checked={autoAdvance} onChange={(e)=>setAutoAdvance(e.target.checked)} />
+              Автоперехід
+            </label>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Нова задача</span>
+            </button>
+          </div>
         </div>
 
         {/* Статистика */}
@@ -458,59 +567,64 @@ export default function AdvancedTaskManager({ workspaceId, currentUser, currentU
         </div>
       </div>
 
-      {/* Фільтри */}
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Пошук задач..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              />
+      {/* NEW: Kanban view */}
+      {viewMode === 'kanban' && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          {(['todo','in_progress','review','done','blocked'] as Task['status'][]).map((col) => (
+            <div key={col} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3">
+              <div className="mb-3 flex items-center justify-between">
+                <span className="font-semibold text-gray-900 dark:text-white">
+                  {col === 'todo' && 'Очікують'}
+                  {col === 'in_progress' && 'В роботі'}
+                  {col === 'review' && 'Перевірка'}
+                  {col === 'done' && 'Завершено'}
+                  {col === 'blocked' && 'Заблоковано'}
+                </span>
+                <span className="text-xs text-gray-500">{filteredTasks.filter(t=>t.status===col).length}</span>
+              </div>
+              <div className="space-y-2">
+                {filteredTasks.filter(t=>t.status===col).map((task) => {
+                  const sla = getSLA(task.dueDate)
+                  return (
+                    <div key={task.id} className="p-3 bg-gray-50 dark:bg-gray-900/40 rounded-lg border border-gray-200 dark:border-gray-700">
+                      <div className="flex items-start justify_between">
+                        <div className="min-w-0 pr-2">
+                          <div className="font-medium text-gray-900 dark:text-white truncate">{task.title}</div>
+                          <div className="mt-1 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                            <span className={sla.className}>{sla.label}</span>
+                            <span className={`px-2 py-0.5 rounded-full ${getPriorityColor(task.priority)} text-[10px]`}>{task.priority}</span>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleStatusChange(task.id, nextStatus(task.status))}
+                          className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded"
+                          title="Перевести на наступний етап"
+                        >Вперед</button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
-          </div>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-          >
-            <option value="all">Всі статуси</option>
-            <option value="todo">Очікують</option>
-            <option value="in_progress">В роботі</option>
-            <option value="review">На перевірці</option>
-            <option value="done">Завершено</option>
-            <option value="blocked">Заблоковано</option>
-          </select>
-          <select
-            value={priorityFilter}
-            onChange={(e) => setPriorityFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-          >
-            <option value="all">Всі пріоритети</option>
-            <option value="low">Низький</option>
-            <option value="medium">Середній</option>
-            <option value="high">Високий</option>
-            <option value="critical">Критичний</option>
-          </select>
+          ))}
         </div>
-      </div>
+      )}
 
       {/* Список задач */}
+      {viewMode === 'list' && (
       <div className="space-y-4">
-        {filteredTasks.map((task) => {
+        {filteredTasks.map((task, idx) => {
           const commentsCount = Array.isArray(task.comments) ? task.comments.length : 0
           const attachmentsCount = Array.isArray(task.attachments) ? task.attachments.length : 0
           const subtasks = Array.isArray(task.subtasks) ? task.subtasks : []
           const tags = Array.isArray(task.tags) ? task.tags : []
+          const sla = getSLA(task.dueDate)
+          const isSelected = idx === selectedIndex
           return (
             <div
               key={task.id}
               onClick={() => handleTaskClick(task)}
-              className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 cursor-pointer hover:shadow-md transition-shadow"
+              className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm border p-6 cursor-pointer hover:shadow-md transition-shadow ${isSelected ? 'border-blue-400 dark:border-blue-500' : 'border-gray-200 dark:border-gray-700'}`}
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
@@ -539,25 +653,26 @@ export default function AdvancedTaskManager({ workspaceId, currentUser, currentU
                     {task.description}
                   </p>
 
-                  <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400 mb-3">
-                    <div className="flex items-center space-x-1">
+                  <div className="flex items-center flex-wrap gap-4 text-sm text-gray-500 dark:text-gray-400 mb-3">
+                    <div className="flex items-center gap-1">
                       <User className="h-4 w-4" />
                       <span>{task.assignee}</span>
                     </div>
-                    <div className="flex items-center space-x-1">
+                    <div className="flex items-center gap-1">
                       <Calendar className="h-4 w-4" />
                       <span>До {task.dueDate.toLocaleDateString('uk-UA')}</span>
+                      <span className={sla.className}>• {sla.label}</span>
                     </div>
-                    <div className="flex items-center space-x-1">
+                    <div className="flex items-center gap-1">
                       <Clock className="h-4 w-4" />
                       <span>{formatTime(task.timeSpent || 0)} / {formatTime(task.estimatedTime || 0)}</span>
                     </div>
-                    <div className="flex items-center space-x-1">
+                    <div className="flex items-center gap-1">
                       <MessageSquare className="h-4 w-4" />
                       <span>{commentsCount}</span>
                     </div>
                     {attachmentsCount > 0 && (
-                      <div className="flex items-center space-x-1 text-gray-400">
+                      <div className="flex items-center gap-1 text-gray-400">
                         <Paperclip className="h-4 w-4" />
                         <span className="text-xs">{attachmentsCount}</span>
                       </div>
@@ -630,6 +745,17 @@ export default function AdvancedTaskManager({ workspaceId, currentUser, currentU
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
+                      handleStatusChange(task.id, nextStatus(task.status))
+                      if (autoAdvance) setSelectedIndex(idx => Math.min(idx + 1, filteredTasks.length - 1))
+                    }}
+                    className="p-1 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
+                    title="Наступний етап"
+                  >
+                    <TrendingUp className="h-4 w-4 text-blue-500" />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
                       deleteTask(task.id)
                       setTasks(prev => prev.filter(t => t.id !== task.id))
                     }}
@@ -644,6 +770,7 @@ export default function AdvancedTaskManager({ workspaceId, currentUser, currentU
           )
         })}
       </div>
+      )}
 
       {/* Модаль створення задачі */}
       {showCreateModal && (
@@ -656,6 +783,32 @@ export default function AdvancedTaskManager({ workspaceId, currentUser, currentU
               </button>
             </div>
             <div className="p-6 space-y-4">
+              {/* NEW: templates */}
+              <div>
+                <label className="block text-sm text-gray-600 dark:text-gray-300 mb-1">Шаблон</label>
+                <select
+                  onChange={(e) => {
+                    const t = TASK_TEMPLATES.find(tt => tt.label === e.target.value)
+                    if (t) {
+                      setCreateForm(cf => ({
+                        ...cf,
+                        title: t.fill.title,
+                        description: t.fill.description,
+                        priority: t.fill.priority,
+                        status: t.fill.status,
+                        tags: t.fill.tags as string[]
+                      }))
+                    }
+                  }}
+                  defaultValue=""
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                >
+                  <option value="" disabled>— Обрати шаблон —</option>
+                  {TASK_TEMPLATES.map(t => (
+                    <option key={t.label} value={t.label}>{t.label}</option>
+                  ))}
+                </select>
+              </div>
               <div>
                 <label className="block text-sm text-gray-600 dark:text-gray-300 mb-1">Назва</label>
                 <input

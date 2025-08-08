@@ -1,10 +1,10 @@
 'use client'
 
 import React, { useMemo } from 'react'
-import ModernLayout from '@/components/layout/ModernLayout'
 import ProtectedRoute from '@/components/auth/ProtectedRoute'
 import TeamLeaderDashboard from '@/components/workspaces/TeamLeaderDashboard'
 import { useData } from '@/components/providers/DataProvider'
+import { FadeIn, SlideUp, StaggerContainer, StaggerItem } from '@/components/ui/Animations'
 
 export default function WorkspaceDashboardPage() {
   const { workspace } = useData()
@@ -56,13 +56,15 @@ export default function WorkspaceDashboardPage() {
 
   return (
     <ProtectedRoute requiredRole="leader">
-      <ModernLayout>
-        <TeamLeaderDashboard 
-          workspaceId="ws-1"
-          teamMembers={teamMembers as any}
-          metrics={metrics as any}
-        />
-      </ModernLayout>
+      <FadeIn>
+        <SlideUp>
+          <TeamLeaderDashboard 
+            workspaceId="ws-1"
+            teamMembers={teamMembers as any}
+            metrics={metrics as any}
+          />
+        </SlideUp>
+      </FadeIn>
     </ProtectedRoute>
   )
 } 

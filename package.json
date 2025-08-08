@@ -1,6 +1,6 @@
 {
   "name": "nexus-arbitrage-platform",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Веб-додаток для арбітражної команди Nexus",
   "private": true,
   "scripts": {

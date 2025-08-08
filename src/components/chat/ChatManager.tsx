@@ -67,7 +67,7 @@ export default function ChatManager() {
   const [isLoading, setIsLoading] = useState(false)
   const [showCreateWorkspace, setShowCreateWorkspace] = useState(false)
   const [showAddMember, setShowAddMember] = useState(false)
-  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null)
   const [showEmojiPickerFor, setShowEmojiPickerFor] = useState<string | null>(null)
 
@@ -149,9 +149,28 @@ export default function ChatManager() {
     }
   }, [currentWorkspace])
 
-  // Автопрокрутка до останнього повідомлення
+  // Автопрокрутка: утиліта та ефекти
+  const scrollToBottom = (smooth: boolean) => {
+    const el = messagesContainerRef.current
+    if (!el) return
+    const behavior: ScrollBehavior = smooth ? 'smooth' : 'auto'
+    el.scrollTo({ top: el.scrollHeight, behavior })
+  }
+
+  // Початковий скрол після вибору workspace (без smooth, щоб уникнути "стрибка")
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (!currentWorkspace) return
+    requestAnimationFrame(() => scrollToBottom(false))
+  }, [currentWorkspace])
+
+  // При нових повідомленнях: скролимо вниз тільки якщо користувач близько до низу
+  useEffect(() => {
+    const el = messagesContainerRef.current
+    if (!el) return
+    const threshold = 120 // px до низу, щоб авто-скролити
+    const distanceFromBottom = el.scrollHeight - (el.scrollTop + el.clientHeight)
+    const shouldAutoScroll = distanceFromBottom < threshold
+    if (shouldAutoScroll) scrollToBottom(true)
   }, [messages])
 
   const sendMessage = async () => {
@@ -404,10 +423,10 @@ export default function ChatManager() {
         {currentWorkspace ? (
           <>
             {/* Header чату */}
-            <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-3 sm:p-4">
+            <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-3 sm:p-4 sticky top-0 z-10">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-medium">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-full flex items-center justify-center text-white font-medium shadow-sm">
                     {currentWorkspace.name.charAt(0)}
                   </div>
                   <div>
@@ -431,7 +450,7 @@ export default function ChatManager() {
             </div>
 
             {/* Повідомлення */}
-            <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4 pb-24">
+            <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4 pb-24">
               {messages.map((message, index) => {
                 const isOwnMessage = message.senderId === user?.id
                 const showDate = index === 0 || 
@@ -441,14 +460,14 @@ export default function ChatManager() {
                   <div key={message.id}>
                     {showDate && (
                       <div className="text-center mb-4">
-                        <span className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs px-3 py-1 rounded-full">
+                        <span className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs px-3 py-1 rounded-full shadow-sm">
                           {formatDate(message.timestamp)}
                         </span>
                       </div>
                     )}
                     
                     <motion.div
-                      initial={{ opacity: 0, y: 20 }}
+                      initial={false}
                       animate={{ opacity: 1, y: 0 }}
                       className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
                     >
@@ -464,12 +483,12 @@ export default function ChatManager() {
                           </div>
                         )}
                         
-                        <div className={`rounded-lg px-3 py-2 sm:px-4 sm:py-2 ${
+                        <div className={`rounded-2xl px-3 py-2 sm:px-4 sm:py-2 shadow-sm ${
                           isOwnMessage 
-                            ? 'bg-blue-500 text-white' 
-                            : 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600'
+                            ? 'bg-gradient-to-br from-blue-500 to-indigo-500 text-white' 
+                            : 'bg-white/90 dark:bg-gray-700/90 backdrop-blur supports-[backdrop-filter]:bg-white/80 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600'
                         }`}>
-                          <div className="text-xs sm:text-sm break-words whitespace-pre-wrap">{renderContent(message.content)}</div>
+                          <div className="text-xs sm:text-sm break-words whitespace-pre-wrap leading-relaxed">{renderContent(message.content)}</div>
                           {message.replyTo && (
                             <div className="mt-2 text-[10px] sm:text-xs text-gray-200 dark:text-gray-300/80">
                               У відповідь на повідомлення #{message.replyTo}
@@ -482,7 +501,7 @@ export default function ChatManager() {
                               {message.reactions.map((reaction, idx) => (
                                 <span
                                   key={idx}
-                                  className="bg-gray-100 dark:bg-gray-600 text-[10px] sm:text-xs px-2 py-1 rounded-full"
+                                  className="bg-gray-100 dark:bg-gray-600 text-[10px] sm:text-xs px-2 py-1 rounded-full shadow"
                                 >
                                   {reaction.emoji}
                                 </span>
@@ -558,11 +577,10 @@ export default function ChatManager() {
                   </div>
                 )
               })}
-              <div ref={messagesEndRef} />
             </div>
 
             {/* Поле введення */}
-            <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-3 sm:p-4 sticky bottom-0 z-10">
+            <div className="bg-white/95 dark:bg-gray-800/95 backdrop-blur border-t border-gray-200 dark:border-gray-700 p-3 sm:p-4 sticky bottom-0 z-10">
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setShowRefPicker(v => !v)}
@@ -582,7 +600,12 @@ export default function ChatManager() {
                     type="text"
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault()
+                        sendMessage()
+                      }
+                    }}
                     placeholder="Напишіть повідомлення... (можна вставляти [account:id|Назва], [card:id|Номер] тощо)"
                     className="w-full px-3 sm:px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
                   />
@@ -606,7 +629,7 @@ export default function ChatManager() {
 
               {/* Reference Picker */}
               {showRefPicker && (
-                <div className="mt-3 p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900">
+                <div className="mt-3 p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900 shadow-sm">
                   <div className="flex items-center gap-2 mb-2">
                     <select
                       value={refType}
@@ -663,7 +686,7 @@ export default function ChatManager() {
       {/* Модальне вікно створення робочого простору */}
       {showCreateWorkspace && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-md shadow-xl">
             <h3 className="text-lg font-semibold mb-4">Створити робочий простір</h3>
             <div className="space-y-4">
               <div>
