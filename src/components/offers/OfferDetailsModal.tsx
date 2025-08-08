@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '@/components/providers/AuthProvider'
-import { X, Link, Copy, ExternalLink, Users, TrendingUp, DollarSign, Target, Calendar, MapPin, Smartphone, BarChart3, Plus, Play, Pause, Archive } from 'lucide-react'
-import { Offer, OfferLink, LinkStats } from '@/types/offers'
+import { X, Link, Copy, ExternalLink, Users, TrendingUp, DollarSign, Target, Calendar, MapPin, Smartphone, BarChart3, Plus, Play, Pause, Archive, MessageSquare } from 'lucide-react'
+import { Offer, OfferLink, LinkStats, OfferComment } from '@/types/offers'
 import { OffersService, OfferLinksService, LinkStatsService, OffersAnalytics } from '@/lib/offers'
 import StatsTracker from './StatsTracker'
 
@@ -20,7 +20,9 @@ export default function OfferDetailsModal({ isOpen, onClose, offer }: OfferDetai
   const [showCreateLink, setShowCreateLink] = useState(false)
   const [showStatsTracker, setShowStatsTracker] = useState(false)
   const [selectedLink, setSelectedLink] = useState<OfferLink | null>(null)
-  const [activeTab, setActiveTab] = useState<'overview' | 'links' | 'stats' | 'analytics'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'links' | 'stats' | 'analytics' | 'comments'>('overview')
+  const [comments, setComments] = useState<OfferComment[]>([])
+  const [newComment, setNewComment] = useState('')
 
   useEffect(() => {
     if (offer) {
@@ -33,9 +35,11 @@ export default function OfferDetailsModal({ isOpen, onClose, offer }: OfferDetai
     
     const offerLinks = OfferLinksService.getLinksByOfferId(offer.id)
     const offerStats = LinkStatsService.getStatsByOfferId(offer.id)
+    const offerComments = OffersService.getOfferComments(offer.id)
     
     setLinks(offerLinks)
     setStats(offerStats)
+    setComments(offerComments)
   }
 
   const handleCreateLink = async (linkData: Omit<OfferLink, 'id' | 'createdAt'>) => {
@@ -62,9 +66,35 @@ export default function OfferDetailsModal({ isOpen, onClose, offer }: OfferDetai
     setShowStatsTracker(false)
   }
 
+  const handleAddComment = () => {
+    if (!offer || !user || !newComment.trim()) return
+    const comment: OfferComment = {
+      id: `ocom_${Date.now()}`,
+      authorId: user.id,
+      authorName: user.name || user.email,
+      text: newComment.trim(),
+      createdAt: new Date(),
+    }
+    OffersService.addCommentToOffer(offer.id, comment)
+    setNewComment('')
+    loadOfferData()
+  }
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
     // Тут можна додати повідомлення про успішне копіювання
+  }
+
+  const handleLaunch = () => {
+    if (!offer) return
+    localStorage.setItem('selectedOfferForCampaign', JSON.stringify({
+      id: offer.id,
+      name: offer.name,
+      rate: offer.rate,
+      vertical: offer.vertical,
+      source: offer.source,
+    }))
+    window.location.href = '/campaigns?from=offer'
   }
 
   const getStatusColor = (status: string) => {
@@ -135,6 +165,7 @@ export default function OfferDetailsModal({ isOpen, onClose, offer }: OfferDetai
           </div>
           <div className="flex items-center gap-3">
             <button
+              onClick={handleLaunch}
               className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 flex items-center gap-2"
               title="Запустити кампанію"
             >
@@ -157,7 +188,8 @@ export default function OfferDetailsModal({ isOpen, onClose, offer }: OfferDetai
               { id: 'overview', name: 'Огляд', icon: BarChart3 },
               { id: 'links', name: 'Посилання', icon: Link },
               { id: 'stats', name: 'Статистика', icon: TrendingUp },
-              { id: 'analytics', name: 'Аналітика', icon: Target }
+              { id: 'analytics', name: 'Аналітика', icon: Target },
+              { id: 'comments', name: 'Коментарі', icon: MessageSquare },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -738,6 +770,41 @@ export default function OfferDetailsModal({ isOpen, onClose, offer }: OfferDetai
               </div>
             </div>
           )}
+
+          {activeTab === 'comments' && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Коментарі ({comments.length})</h3>
+              <div className="space-y-3 max-h-64 overflow-y-auto">
+                {comments.length === 0 && (
+                  <div className="text-sm text-gray-500">Поки що немає коментарів.</div>
+                )}
+                {comments.map((c) => (
+                  <div key={c.id} className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium text-gray-900 dark:text-white">{c.authorName}</span>
+                      <span className="text-gray-500 dark:text-gray-400">{new Date(c.createdAt).toLocaleString('uk-UA')}</span>
+                    </div>
+                    <div className="text-gray-700 dark:text-gray-300 text-sm mt-1 whitespace-pre-wrap">{c.text}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  placeholder="Додати коментар..."
+                  className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                />
+                <button
+                  onClick={handleAddComment}
+                  disabled={!newComment.trim()}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg"
+                >
+                  Додати
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -761,19 +828,19 @@ export default function OfferDetailsModal({ isOpen, onClose, offer }: OfferDetai
         </div>
       )}
 
-             {showStatsTracker && selectedLink && (
-         <StatsTracker
-           isOpen={showStatsTracker}
-           onClose={() => {
-             setShowStatsTracker(false)
-             setSelectedLink(null)
-           }}
-           selectedLink={selectedLink}
-           onSave={() => {
-             loadOfferData()
-           }}
-         />
-       )}
+      {showStatsTracker && selectedLink && (
+        <StatsTracker
+          isOpen={showStatsTracker}
+          onClose={() => {
+            setShowStatsTracker(false)
+            setSelectedLink(null)
+          }}
+          selectedLink={selectedLink}
+          onSave={() => {
+            loadOfferData()
+          }}
+        />
+      )}
     </div>
   )
 } 

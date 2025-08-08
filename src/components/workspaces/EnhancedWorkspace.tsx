@@ -1,6 +1,9 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
+import Link from 'next/link'
+import { useData } from '@/components/providers/DataProvider'
+import { LinkStatsService } from '@/lib/offers'
 import { 
   Users, 
   MessageSquare, 
@@ -55,26 +58,19 @@ interface WorkspaceMember {
   role: 'teamlead' | 'farmer' | 'launcher' | 'admin'
   avatar: string
   status: 'online' | 'offline' | 'busy'
-  lastActivity: Date
+  lastActivity?: Date | string
   performance: number
   tasksCompleted: number
   currentTask?: string
+  isActive: boolean
 }
 
-interface WorkspaceTask {
-  id: string
-  title: string
-  description: string
-  status: 'todo' | 'in_progress' | 'review' | 'done' | 'blocked'
-  priority: 'low' | 'medium' | 'high' | 'critical'
-  assignee: string
-  assigneeId: string
-  dueDate: Date
-  createdAt: Date
-  tags: string[]
-  progress: number
-  timeSpent: number
-  estimatedTime: number
+// Безпечне форматування часу останньої активності
+const formatLastActivityTime = (value?: Date | string) => {
+  if (!value) return '-'
+  const date = value instanceof Date ? value : new Date(value)
+  if (isNaN(date.getTime())) return '-'
+  return date.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })
 }
 
 interface WorkspaceEvent {
@@ -106,176 +102,35 @@ interface EnhancedWorkspaceProps {
 }
 
 export default function EnhancedWorkspace({ workspaceId, currentUser, currentUserId }: EnhancedWorkspaceProps) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'team' | 'tasks' | 'chat' | 'calendar' | 'analytics'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'team' | 'calendar' | 'analytics'>('overview')
   const [searchQuery, setSearchQuery] = useState('')
   const [notifications, setNotifications] = useState(0)
 
-  // Мок дані для робочого простору
-  const workspace = {
-    id: workspaceId,
-    name: 'Нексіс 1',
-    description: 'Основний робочий простір для команди арбітражників',
-    type: 'team',
-    isActive: true,
-    members: [
-      {
-        id: '1',
-        name: 'Олександр Петренко',
-        role: 'teamlead',
-        avatar: '/api/placeholder/32/32',
-        status: 'online',
-        lastActivity: new Date(),
-        performance: 95,
-        tasksCompleted: 12,
-        currentTask: 'Налаштування Facebook реклами'
-      },
-      {
-        id: '2',
-        name: 'Марія Іваненко',
-        role: 'farmer',
-        avatar: '/api/placeholder/32/32',
-        status: 'online',
-        lastActivity: new Date(Date.now() - 30 * 60 * 1000),
-        performance: 88,
-        tasksCompleted: 8,
-        currentTask: 'Фармінг Google Ads аккаунтів'
-      },
-      {
-        id: '3',
-        name: 'Дмитро Сидоренко',
-        role: 'launcher',
-        avatar: '/api/placeholder/32/32',
-        status: 'busy',
-        lastActivity: new Date(Date.now() - 15 * 60 * 1000),
-        performance: 92,
-        tasksCompleted: 10,
-        currentTask: 'Запуск TikTok кампанії'
-      },
-      {
-        id: '4',
-        name: 'Анна Коваленко',
-        role: 'farmer',
-        avatar: '/api/placeholder/32/32',
-        status: 'offline',
-        lastActivity: new Date(Date.now() - 2 * 60 * 60 * 1000),
-        performance: 85,
-        tasksCompleted: 6
-      }
-    ] as WorkspaceMember[],
-    tasks: [
-      {
-        id: '1',
-        title: 'Налаштування Facebook реклами',
-        description: 'Створити та налаштувати рекламні кампанії для нового продукту',
-        status: 'in_progress',
-        priority: 'high',
-        assignee: 'Дмитро Сидоренко',
-        assigneeId: '3',
-        dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
-        createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-        tags: ['facebook', 'реклама', 'a/b тестування'],
-        progress: 60,
-        timeSpent: 240,
-        estimatedTime: 480
-      },
-      {
-        id: '2',
-        title: 'Фармінг Google Ads аккаунтів',
-        description: 'Підготувати 10 Google Ads аккаунтів для рекламних кампаній',
-        status: 'todo',
-        priority: 'critical',
-        assignee: 'Марія Іваненко',
-        assigneeId: '2',
-        dueDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000),
-        createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-        tags: ['google ads', 'фармінг', '2fa'],
-        progress: 0,
-        timeSpent: 0,
-        estimatedTime: 360
-      },
-      {
-        id: '3',
-        title: 'Аналіз конкурентів',
-        description: 'Провести детальний аналіз конкурентів у ніші',
-        status: 'review',
-        priority: 'medium',
-        assignee: 'Віктор Мельник',
-        assigneeId: '5',
-        dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
-        createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-        tags: ['аналітика', 'конкуренти', 'звіт'],
-        progress: 90,
-        timeSpent: 420,
-        estimatedTime: 300
-      }
-    ] as WorkspaceTask[],
-    events: [
-      {
-        id: '1',
-        title: 'Щоденна зустріч команди',
-        description: 'Обговорення прогресу та планів на день',
-        date: new Date(Date.now() + 2 * 60 * 60 * 1000),
-        type: 'meeting',
-        attendees: ['1', '2', '3', '4'],
-        duration: 30,
-        location: 'Zoom'
-      },
-      {
-        id: '2',
-        title: 'Дедлайн Facebook кампанії',
-        description: 'Завершення налаштування рекламних кампаній',
-        date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
-        type: 'deadline',
-        attendees: ['3'],
-        duration: 0
-      },
-      {
-        id: '3',
-        title: 'Віха: 100 аккаунтів готово',
-        description: 'Досягнення важливої віхи в проекті',
-        date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-        type: 'milestone',
-        attendees: ['1', '2', '3', '4'],
-        duration: 0
-      }
-    ] as WorkspaceEvent[],
-    stats: {
-      totalMembers: 4,
-      activeMembers: 3,
-      totalTasks: 3,
-      completedTasks: 0,
-      overdueTasks: 0,
-      totalRevenue: 18500,
-      weeklyGrowth: 15,
-      averagePerformance: 90
-    } as WorkspaceStats
-  }
+  // Дані з провайдера
+  const { workspace: ws } = useData()
+  const team = ws?.team || []
+  const tasks = ws?.tasks || []
+  const activity = ws?.activity || []
 
-  const handleQuickAction = (actionId: string) => {
-    switch (actionId) {
-      case 'new-task':
-      case 'task-template':
-      case 'bulk-tasks':
-        setActiveTab('tasks')
-        break
-      case 'schedule-meeting':
-      case 'announcement':
-        setActiveTab('calendar')
-        break
-      case 'team-chat':
-        setActiveTab('chat')
-        break
-      case 'analytics':
-      case 'performance-report':
-      case 'insights':
-        setActiveTab('analytics')
-        break
-      case 'add-member':
-        setActiveTab('team')
-        break
-      default:
-        console.log('Action:', actionId)
+  // Розрахунок метрик із реальних даних (оффери/лінк-статистика)
+  const totalRevenue = (() => {
+    try {
+      const stats = LinkStatsService.getAllStats()
+      return stats.reduce((s, r) => s + (r.revenue || 0), 0)
+    } catch {
+      return 0
     }
+  })()
+
+  const metrics: WorkspaceStats = {
+    totalMembers: team.length,
+    activeMembers: team.length, // за замовчуванням вважаємо всіх активними
+    totalTasks: tasks.length,
+    completedTasks: tasks.filter((t: any) => t.status === 'done').length,
+    overdueTasks: 0,
+    totalRevenue,
+    weeklyGrowth: 0,
+    averagePerformance: 0,
   }
 
   const getStatusColor = (status: string) => {
@@ -327,8 +182,6 @@ export default function EnhancedWorkspace({ workspaceId, currentUser, currentUse
   const tabs = [
     { id: 'overview', label: 'Огляд', icon: BarChartIcon, color: 'blue' },
     { id: 'team', label: 'Команда', icon: UsersIcon, color: 'green' },
-    { id: 'tasks', label: 'Задачі', icon: CheckSquare, color: 'purple' },
-    { id: 'chat', label: 'Чат', icon: MessageSquare, color: 'orange' },
     { id: 'calendar', label: 'Календар', icon: Calendar, color: 'red' },
     { id: 'analytics', label: 'Аналітика', icon: BarChart3, color: 'indigo' }
   ]
@@ -346,10 +199,10 @@ export default function EnhancedWorkspace({ workspaceId, currentUser, currentUse
                 </div>
                 <div>
                   <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-                    {workspace.name}
+                    {ws?.name || 'Робочий простір'}
                   </h1>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {workspace.description}
+                    {ws?.description || 'Командний простір'}
                   </p>
                 </div>
               </div>
@@ -368,11 +221,15 @@ export default function EnhancedWorkspace({ workspaceId, currentUser, currentUse
                 />
               </div>
 
+              {/* Швидкі лінки */}
+              <Link href="/workspace/tasks" className="px-3 py-2 text-sm rounded-lg bg-purple-600 text-white hover:bg-purple-700">Задачі</Link>
+              <Link href="/workspace/chat" className="px-3 py-2 text-sm rounded-lg bg-orange-600 text-white hover:bg-orange-700">Чат</Link>
+
               {/* Сповіщення */}
               <RealTimeNotifications userId={currentUserId} workspaceId={workspaceId} />
 
               {/* Швидкі дії */}
-              <QuickActions onAction={handleQuickAction} workspaceId={workspaceId} />
+              <QuickActions onAction={() => {}} workspaceId={workspaceId} />
 
               {/* Налаштування */}
               <button className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
@@ -421,7 +278,7 @@ export default function EnhancedWorkspace({ workspaceId, currentUser, currentUse
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Команда</p>
                     <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {workspace.stats.activeMembers}/{workspace.stats.totalMembers}
+                      {metrics.activeMembers}/{metrics.totalMembers}
                     </p>
                   </div>
                 </div>
@@ -435,7 +292,7 @@ export default function EnhancedWorkspace({ workspaceId, currentUser, currentUse
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Задачі</p>
                     <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {workspace.stats.completedTasks}/{workspace.stats.totalTasks}
+                      {metrics.completedTasks}/{metrics.totalTasks}
                     </p>
                   </div>
                 </div>
@@ -449,7 +306,7 @@ export default function EnhancedWorkspace({ workspaceId, currentUser, currentUse
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Продуктивність</p>
                     <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                      {workspace.stats.averagePerformance}%
+                      {metrics.averagePerformance}%
                     </p>
                   </div>
                 </div>
@@ -463,7 +320,7 @@ export default function EnhancedWorkspace({ workspaceId, currentUser, currentUse
                   <div className="ml-4">
                     <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Дохід</p>
                     <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                      ${workspace.stats.totalRevenue.toLocaleString()}
+                      ${metrics.totalRevenue.toLocaleString()}
                     </p>
                   </div>
                 </div>
@@ -479,7 +336,7 @@ export default function EnhancedWorkspace({ workspaceId, currentUser, currentUse
                   Найближчі події
                 </h3>
                 <div className="space-y-4">
-                  {workspace.events.slice(0, 3).map((event) => (
+                  {(ws as any)?.events?.slice?.(0, 3)?.map((event: any) => (
                     <div key={event.id} className="flex items-start space-x-3">
                       <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
                         <Calendar className="h-4 w-4 text-blue-600 dark:text-blue-400" />
@@ -489,7 +346,7 @@ export default function EnhancedWorkspace({ workspaceId, currentUser, currentUse
                           {event.title}
                         </p>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                          {event.date.toLocaleDateString('uk-UA')} • {event.date.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}
+                          {new Date(event.date).toLocaleDateString('uk-UA')} • {formatLastActivityTime(event.date)}
                         </p>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                           {event.attendees.length} учасників
@@ -507,29 +364,38 @@ export default function EnhancedWorkspace({ workspaceId, currentUser, currentUse
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                   Останні задачі
                 </h3>
-                <button
-                  onClick={() => setActiveTab('tasks')}
+                <Link
+                  href="/workspace/tasks"
                   className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center space-x-1"
                 >
                   <span>Переглянути всі</span>
                   <ArrowRight className="h-3 w-3" />
-                </button>
+                </Link>
               </div>
               <div className="space-y-3">
-                {workspace.tasks.slice(0, 3).map((task) => (
+                {tasks.slice(0, 3).map((task: any) => (
                   <div key={task.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-gray-900 dark:text-white truncate">
                         {task.title}
                       </p>
                       <div className="flex items-center space-x-2 mt-1">
-                        <span className={`px-2 py-1 text-xs rounded-full ${getTaskStatusColor(task.status)}`}>
+                        <span className={`px-2 py-1 text-xs rounded-full ${
+                          task.status === 'todo' ? 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300' :
+                          task.status === 'in_progress' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400' :
+                          task.status === 'review' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400' :
+                          task.status === 'done' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                        }`}>
                           {task.status === 'todo' ? 'Очікує' :
                            task.status === 'in_progress' ? 'В роботі' :
                            task.status === 'review' ? 'Перевірка' :
                            task.status === 'done' ? 'Завершено' : 'Заблоковано'}
                         </span>
-                        <span className={`px-2 py-1 text-xs rounded-full ${getPriorityColor(task.priority)}`}>
+                        <span className={`px-2 py-1 text-xs rounded-full ${
+                          task.priority === 'low' ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400' :
+                          task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400' :
+                          task.priority === 'high' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400' : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                        }`}>
                           {task.priority === 'low' ? 'Низький' :
                            task.priority === 'medium' ? 'Середній' :
                            task.priority === 'high' ? 'Високий' : 'Критичний'}
@@ -539,16 +405,16 @@ export default function EnhancedWorkspace({ workspaceId, currentUser, currentUse
                     <div className="flex items-center space-x-2 ml-4">
                       <div className="text-right">
                         <p className="text-sm font-medium text-gray-900 dark:text-white">
-                          {task.progress}%
+                          {task.progress ?? 0}%
                         </p>
                         <p className="text-xs text-gray-500 dark:text-gray-400">
-                          {formatTime(task.timeSpent)} / {formatTime(task.estimatedTime)}
+                          {/* Прогрес за наявності детальної інформації */}
                         </p>
                       </div>
                       <div className="w-16 bg-gray-200 dark:bg-gray-600 rounded-full h-2">
                         <div
                           className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                          style={{ width: `${task.progress}%` }}
+                          style={{ width: `${task.progress ?? 0}%` }}
                         />
                       </div>
                     </div>
@@ -563,71 +429,35 @@ export default function EnhancedWorkspace({ workspaceId, currentUser, currentUse
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                Команда ({workspace.members.length} учасників)
+                Команда ({team.length} учасників)
               </h2>
-              <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center space-x-2 transition-colors">
-                <Plus className="h-4 w-4" />
-                <span>Додати учасника</span>
-              </button>
+              <Link href="/workspace/chat" className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">Відкрити чат</Link>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {workspace.members.map((member) => (
+              {team.map((member: any) => (
                 <div key={member.id} className="bg-gray-50 dark:bg-gray-700 rounded-xl p-6 border border-gray-200 dark:border-gray-600">
                   <div className="flex items-center space-x-4 mb-4">
                     <div className="relative">
                       <div className="w-12 h-12 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center">
                         <User className="h-6 w-6 text-gray-600 dark:text-gray-400" />
                       </div>
-                      <div className={`absolute -bottom-1 -right-1 w-4 h-4 ${getStatusColor(member.status)} rounded-full border-2 border-white dark:border-gray-800`}></div>
+                      <div className={`absolute -bottom-1 -right-1 w-4 h-4 ${'bg-green-500'} rounded-full border-2 border-white dark:border-gray-800`}></div>
                     </div>
                     <div className="flex-1">
                       <h3 className="font-semibold text-gray-900 dark:text-white">
                         {member.name}
                       </h3>
-                      <span className={`px-2 py-1 text-xs rounded-full ${getRoleColor(member.role)}`}>
-                        {member.role === 'teamlead' ? 'Тімлід' : 
-                         member.role === 'farmer' ? 'Фармер' : 
-                         member.role === 'launcher' ? 'Лончер' : 'Адмін'}
+                      <span className={`px-2 py-1 text-xs rounded-full ${'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400'}`}>
+                        {member.role || 'Учасник'}
                       </span>
                     </div>
                   </div>
                   
                   <div className="space-y-3">
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-500 dark:text-gray-400">Продуктивність</span>
-                      <span className="text-sm font-medium text-gray-900 dark:text-white">
-                        {member.performance}%
-                      </span>
-                    </div>
-                    <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2">
-                      <div
-                        className="bg-green-600 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${member.performance}%` }}
-                      />
-                    </div>
-                    
-                    <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-500 dark:text-gray-400">Задач завершено</span>
                       <span className="text-sm font-medium text-gray-900 dark:text-white">
-                        {member.tasksCompleted}
-                      </span>
-                    </div>
-
-                    {member.currentTask && (
-                      <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                        <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
-                          Поточна задача:
-                        </p>
-                        <p className="text-sm text-blue-800 dark:text-blue-300 mt-1">
-                          {member.currentTask}
-                        </p>
-                      </div>
-                    )}
-
-                    <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400">
-                      <span>Остання активність:</span>
-                      <span>
-                        {member.lastActivity.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}
+                        {/* За бажанням можна підрахувати по задачах */}0
                       </span>
                     </div>
                   </div>
@@ -637,21 +467,7 @@ export default function EnhancedWorkspace({ workspaceId, currentUser, currentUse
           </div>
         )}
 
-        {activeTab === 'tasks' && (
-          <AdvancedTaskManager
-            workspaceId={workspaceId}
-            currentUser={currentUser}
-          />
-        )}
-
-        {activeTab === 'chat' && (
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
-            <TeamChat 
-              workspaceId={workspaceId} 
-              currentUser={currentUser} 
-            />
-          </div>
-        )}
+        {/* Вкладки задач і чату перенаправляємо на окремі сторінки */}
 
         {activeTab === 'calendar' && (
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
@@ -665,7 +481,7 @@ export default function EnhancedWorkspace({ workspaceId, currentUser, currentUse
               </button>
             </div>
             <div className="space-y-4">
-              {workspace.events.map((event) => (
+              {(ws as any)?.events?.map?.((event: any) => (
                 <div key={event.id} className="flex items-start space-x-4 p-4 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                   <div className="p-3 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
                     <Calendar className="h-6 w-6 text-blue-600 dark:text-blue-400" />
@@ -692,11 +508,11 @@ export default function EnhancedWorkspace({ workspaceId, currentUser, currentUse
                     <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
                       <span className="flex items-center space-x-1">
                         <CalendarDays className="h-4 w-4" />
-                        <span>{event.date.toLocaleDateString('uk-UA')}</span>
+                        <span>{new Date(event.date).toLocaleDateString('uk-UA')}</span>
                       </span>
                       <span className="flex items-center space-x-1">
                         <Timer className="h-4 w-4" />
-                        <span>{event.date.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}</span>
+                        <span>{formatLastActivityTime(event.date)}</span>
                       </span>
                       {event.duration && (
                         <span className="flex items-center space-x-1">
@@ -719,25 +535,25 @@ export default function EnhancedWorkspace({ workspaceId, currentUser, currentUse
         {activeTab === 'analytics' && (
           <TeamLeaderDashboard
             workspaceId={workspaceId}
-            teamMembers={workspace.members.map(member => ({
+            teamMembers={team.map((member: any) => ({
               id: member.id,
               name: member.name,
-              role: member.role,
-              status: member.status,
-              performance: member.performance,
-              tasksCompleted: member.tasksCompleted,
-              lastActivity: member.lastActivity,
-              isActive: member.status === 'online' || member.status === 'busy'
+              role: (member.role as any) || 'member',
+              status: 'online',
+              performance: 0,
+              tasksCompleted: 0,
+              lastActivity: new Date(),
+              isActive: true
             }))}
             metrics={{
-              totalMembers: workspace.stats.totalMembers,
-              activeMembers: workspace.stats.activeMembers,
-              averagePerformance: workspace.stats.averagePerformance,
-              totalTasks: workspace.stats.totalTasks,
-              completedTasks: workspace.stats.completedTasks,
-              pendingTasks: workspace.tasks.filter(t => t.status === 'in_progress').length,
-              overdueTasks: workspace.stats.overdueTasks,
-              weeklyGrowth: workspace.stats.weeklyGrowth
+              totalMembers: metrics.totalMembers,
+              activeMembers: metrics.activeMembers,
+              averagePerformance: metrics.averagePerformance,
+              totalTasks: metrics.totalTasks,
+              completedTasks: metrics.completedTasks,
+              pendingTasks: tasks.filter((t: any) => t.status === 'in_progress').length,
+              overdueTasks: metrics.overdueTasks,
+              weeklyGrowth: metrics.weeklyGrowth
             }}
           />
         )}

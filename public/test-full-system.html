@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест повної системи Nexus</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+        }
+        .test-button {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 12px 20px;
+            text-decoration: none;
+            border-radius: 8px;
+            margin: 8px 5px;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .test-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        .status {
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        .status.success {
+            background: rgba(76, 175, 80, 0.3);
+            border: 1px solid #4CAF50;
+        }
+        .status.warning {
+            background: rgba(255, 152, 0, 0.3);
+            border: 1px solid #FF9800;
+        }
+        .status.error {
+            background: rgba(244, 67, 54, 0.3);
+            border: 1px solid #f44336;
+        }
+        .section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+        .section h3 {
+            margin-top: 0;
+            color: white;
+        }
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+        .feature-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .feature-list li:before {
+            content: "✅ ";
+            margin-right: 10px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Тест повної системи Nexus</h1>
+        
+        <div class="status success">
+            <h3>✅ Система повністю відновлена!</h3>
+            <p>Всі функції повернуті та захищені авторизацією.</p>
+        </div>
+
+        <div class="section">
+            <h3>🔐 Система авторизації</h3>
+            <ul class="feature-list">
+                <li>Автоматичне перенаправлення на вхід</li>
+                <li>Реєстрація нових користувачів</li>
+                <li>Адмін панель з управлінням</li>
+                <li>Захищені маршрути</li>
+                <li>Ролі та права доступу</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h3>📋 Тестові акаунти</h3>
+            <div class="grid">
+                <div>
+                    <strong>👑 Адміністратор:</strong><br>
+                    admin@nexus.com / admin123
+                </div>
+                <div>
+                    <strong>👥 Лідер:</strong><br>
+                    leader@nexus.com / leader123
+                </div>
+                <div>
+                    <strong>🌾 Фармер:</strong><br>
+                    farmer@nexus.com / farmer123
+                </div>
+                <div>
+                    <strong>🚀 Лончер:</strong><br>
+                    launcher@nexus.com / launcher123
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>🔗 Тестування основних сторінок</h3>
+            <div class="grid">
+                <a href="http://localhost:3000/" class="test-button">🏠 Головна</a>
+                <a href="http://localhost:3000/login" class="test-button">📝 Вхід</a>
+                <a href="http://localhost:3000/register" class="test-button">📋 Реєстрація</a>
+                <a href="http://localhost:3000/admin/users" class="test-button">👥 Адмін панель</a>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>🎯 Тестування функцій</h3>
+            <div class="grid">
+                <a href="http://localhost:3000/accounts" class="test-button">👤 Аккаунти</a>
+                <a href="http://localhost:3000/campaigns" class="test-button">📈 Кампанії</a>
+                <a href="http://localhost:3000/offers" class="test-button">🎯 Оффери</a>
+                <a href="http://localhost:3000/cards-proxies" class="test-button">💳 Карти/Проксі</a>
+                <a href="http://localhost:3000/reports" class="test-button">📊 Звіти</a>
+                <a href="http://localhost:3000/settings" class="test-button">⚙️ Налаштування</a>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>🏢 Тестування робочого простору</h3>
+            <div class="grid">
+                <a href="http://localhost:3000/workspace/dashboard" class="test-button">🏢 Дашборд</a>
+                <a href="http://localhost:3000/workspace/tasks" class="test-button">📋 Задачі</a>
+                <a href="http://localhost:3000/workspace/team" class="test-button">👥 Команда</a>
+                <a href="http://localhost:3000/workspace/chat" class="test-button">💬 Чат</a>
+            </div>
+        </div>
+
+        <div class="status warning">
+            <h3>🎯 Інструкції для тестування:</h3>
+            <ol>
+                <li><strong>Спробуйте зайти на головну сторінку</strong> - має перенаправити на вхід</li>
+                <li><strong>Увійдіть як адміністратор</strong> - admin@nexus.com / admin123</li>
+                <li><strong>Перевірте всі сторінки</strong> - вони мають працювати без помилок</li>
+                <li><strong>Спробуйте адмін панель</strong> - тільки для адміністраторів</li>
+                <li><strong>Зареєструйте нового користувача</strong> та підтвердіть його</li>
+            </ol>
+        </div>
+
+        <div id="server-status" class="status error">
+            <h3>🔍 Статус сервера:</h3>
+            <p>Перевіряємо...</p>
+        </div>
+
+        <div class="status success">
+            <h3>📊 Очікуваний результат:</h3>
+            <ul class="feature-list">
+                <li>Немає помилок в консолі</li>
+                <li>Всі сторінки завантажуються</li>
+                <li>Авторизація працює стабільно</li>
+                <li>Адмін панель доступна</li>
+                <li>Навігація працює плавно</li>
+                <li>Захищені маршрути працюють</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Перевірка доступності сервера
+        const checkServer = async () => {
+            try {
+                const response = await fetch('http://localhost:3000/api/test');
+                const statusDiv = document.getElementById('server-status');
+                
+                if (response.ok) {
+                    statusDiv.className = 'status success';
+                    statusDiv.innerHTML = '<h3>✅ Сервер працює!</h3><p>Можна тестувати всю систему</p>';
+                } else {
+                    statusDiv.className = 'status warning';
+                    statusDiv.innerHTML = '<h3>⚠️ Сервер відповідає з помилкою</h3><p>Спробуйте оновити сторінку</p>';
+                }
+            } catch (error) {
+                const statusDiv = document.getElementById('server-status');
+                statusDiv.className = 'status error';
+                statusDiv.innerHTML = '<h3>❌ Сервер недоступний</h3><p>Запустіть npm run dev</p>';
+            }
+        };
+
+        // Перевіряємо сервер при завантаженні
+        checkServer();
+        
+        // Перевіряємо кожні 5 секунд
+        setInterval(checkServer, 5000);
+    </script>
+</body>
+</html> 

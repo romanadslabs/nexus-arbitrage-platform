@@ -1,12 +1,14 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { 
   BarChart3, TrendingUp, Users, DollarSign, 
   Calendar, Filter, Download, Eye, 
   Target, CheckCircle, Clock, AlertCircle,
   ArrowUpRight, ArrowDownRight, Activity
 } from 'lucide-react'
+import { useData } from '@/components/providers/DataProvider'
+import { LinkStatsService } from '@/lib/offers'
 
 interface PerformanceMetrics {
   totalRevenue: number
@@ -39,71 +41,85 @@ interface TeamMemberPerformance {
 }
 
 export default function PerformanceReports() {
+  const { campaigns, workspace } = useData()
   const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month' | 'quarter' | 'year'>('month')
   const [selectedTeam, setSelectedTeam] = useState<string>('all')
   const [reportType, setReportType] = useState<'overview' | 'team' | 'campaigns' | 'tasks'>('overview')
 
-  // Тестові дані для метрик продуктивності
-  const [metrics, setMetrics] = useState<PerformanceMetrics>({
-    totalRevenue: 91527.50,
-    totalSpent: 3850,
-    totalProfit: 87677.50,
-    totalConversions: 2788,
-    totalClicks: 36680,
-    averageROI: 2379.9,
-    conversionRate: 7.6,
-    averagePayout: 32.83,
-    activeCampaigns: 3,
-    completedTasks: 15,
-    pendingTasks: 8,
-    overdueTasks: 2
-  })
+  // Реальні метрики з campaigns + link stats
+  const metrics: PerformanceMetrics = useMemo(() => {
+    const allStats = LinkStatsService.getAllStats()
 
-  // Тестові дані для продуктивності команди
-  const [teamPerformance, setTeamPerformance] = useState<TeamMemberPerformance[]>([
-    {
-      id: 'farmer-1',
-      name: 'Фармер 1',
-      role: 'farmer',
-      revenue: 31467.50,
-      spent: 850,
-      profit: 30617.50,
-      conversions: 1234,
-      campaigns: 1,
-      tasksCompleted: 8,
-      tasksPending: 3,
-      efficiency: 94.2,
-      lastActivity: new Date('2024-01-19')
-    },
-    {
-      id: 'farmer-2',
-      name: 'Фармер 2',
-      role: 'farmer',
-      revenue: 25515.00,
-      spent: 1800,
-      profit: 23715.00,
-      conversions: 567,
-      campaigns: 1,
-      tasksCompleted: 5,
-      tasksPending: 2,
-      efficiency: 89.3,
-      lastActivity: new Date('2024-01-18')
-    },
-    {
-      id: 'launcher-1',
-      name: 'Арбітражник 1',
-      role: 'launcher',
-      revenue: 34545.00,
-      spent: 1200,
-      profit: 33345.00,
-      conversions: 987,
-      campaigns: 1,
-      tasksCompleted: 2,
-      tasksPending: 3,
-      efficiency: 96.5,
-      lastActivity: new Date('2024-01-20')
+    const totalRevenue = allStats.reduce((s, r) => s + (r.revenue || 0), 0)
+    const totalSpent = allStats.reduce((s, r) => s + (r.cost || 0), 0)
+    const totalProfit = allStats.reduce((s, r) => s + ((r.revenue || 0) - (r.cost || 0)), 0)
+    const totalConversions = allStats.reduce((s, r) => s + (r.conversions || 0), 0)
+    const totalClicks = allStats.reduce((s, r) => s + (r.clicks || 0), 0)
+
+    const averageROI = totalSpent > 0 ? (totalProfit / totalSpent) * 100 : 0
+    const conversionRate = totalClicks > 0 ? (totalConversions / totalClicks) * 100 : 0
+
+    const activeCampaigns = campaigns.filter(c => c.status === 'active').length
+
+    const tasks = workspace?.tasks || []
+    const completedTasks = tasks.filter(t => t.status === 'done' || (t as any).status === 'completed').length
+    const pendingTasks = tasks.filter(t => t.status === 'in_progress' || (t as any).status === 'todo').length
+    const overdueTasks = 0
+
+    return {
+      totalRevenue,
+      totalSpent,
+      totalProfit,
+      totalConversions,
+      totalClicks,
+      averageROI,
+      conversionRate,
+      averagePayout: totalConversions > 0 ? totalRevenue / totalConversions : 0,
+      activeCampaigns,
+      completedTasks,
+      pendingTasks,
+      overdueTasks,
     }
-  ])
+  }, [campaigns, workspace])
+
+  // Спрощена команда з workspace (якщо є)
+  const teamPerformance: TeamMemberPerformance[] = useMemo(() => {
+    const members = workspace?.team || []
+    const byMember: Record<string, TeamMemberPerformance> = {}
+    const allStats = LinkStatsService.getAllStats()
+
+    for (const m of members) {
+      byMember[m.id] = {
+        id: m.id,
+        name: m.name,
+        role: (m as any).role || 'member',
+        revenue: 0,
+        spent: 0,
+        profit: 0,
+        conversions: 0,
+        campaigns: campaigns.filter(c => c.launcherId === m.id).length,
+        tasksCompleted: (workspace?.tasks || []).filter(t => t.assigneeId === m.id && (t.status === 'done' || (t as any).status === 'completed')).length,
+        tasksPending: (workspace?.tasks || []).filter(t => t.assigneeId === m.id && (t.status === 'in_progress' || (t as any).status === 'todo')).length,
+        efficiency: 0,
+        lastActivity: new Date(),
+      }
+    }
+
+    for (const s of allStats) {
+      const ownerId = s.updatedBy // хто оновив статистику
+      if (!ownerId) continue
+      if (!byMember[ownerId]) continue
+      byMember[ownerId].revenue += s.revenue || 0
+      byMember[ownerId].spent += s.cost || 0
+      byMember[ownerId].conversions += s.conversions || 0
+    }
+
+    return Object.values(byMember).map(m => ({
+      ...m,
+      profit: m.revenue - m.spent,
+      efficiency: (m.tasksCompleted + m.tasksPending) > 0 ? (m.tasksCompleted / (m.tasksCompleted + m.tasksPending)) * 100 : 0,
+    }))
+  }, [workspace, campaigns])
 
   const getPeriodLabel = (period: string) => {
     switch (period) {
@@ -225,7 +241,7 @@ export default function PerformanceReports() {
                 </p>
                 <p className="text-sm text-green-600 flex items-center">
                   <ArrowUpRight className="w-4 h-4 mr-1" />
-                  +12.5% з минулого місяця
+                  +—
                 </p>
               </div>
               <div className="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
@@ -243,7 +259,7 @@ export default function PerformanceReports() {
                 </p>
                 <p className="text-sm text-green-600 flex items-center">
                   <ArrowUpRight className="w-4 h-4 mr-1" />
-                  +15.2% з минулого місяця
+                  +—
                 </p>
               </div>
               <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
@@ -261,7 +277,7 @@ export default function PerformanceReports() {
                 </p>
                 <p className="text-sm text-green-600 flex items-center">
                   <ArrowUpRight className="w-4 h-4 mr-1" />
-                  +8.3% з минулого місяця
+                  +—
                 </p>
               </div>
               <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
@@ -279,7 +295,7 @@ export default function PerformanceReports() {
                 </p>
                 <p className="text-sm text-green-600 flex items-center">
                   <ArrowUpRight className="w-4 h-4 mr-1" />
-                  +5.7% з минулого місяця
+                  +—
                 </p>
               </div>
               <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900 rounded-lg flex items-center justify-center">
@@ -411,58 +427,51 @@ export default function PerformanceReports() {
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                 Активні кампанії
               </h3>
-              <div className="space-y-4">
+              <div className="space-y-2">
+                {campaigns.filter(c => c.status === 'active').map((c) => (
+                  <div key={c.id} className="flex items-center justify-between">
+                    <span className="text-gray-600 dark:text-gray-400">{c.platform} — {c.name}</span>
+                    <span className="text-green-600 dark:text-green-400 font-medium">${c.budget}</span>
+                  </div>
+                ))}
+                {campaigns.filter(c => c.status === 'active').length === 0 && (
+                  <div className="text-sm text-gray-500">Немає активних кампаній</div>
+                )}
+              </div>
+            </div>
+
+            <div className="card">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                Кліки та конверсії (всього)
+              </h3>
+              <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Facebook E-commerce</span>
-                  <span className="text-green-600 dark:text-green-400 font-medium">$31,467</span>
+                  <span className="text-gray-600 dark:text-gray-400">Кліки</span>
+                  <span className="text-blue-600 dark:text-blue-400 font-medium">{metrics.totalClicks.toLocaleString()}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Google Ads Casino</span>
-                  <span className="text-green-600 dark:text-green-400 font-medium">$25,515</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">TikTok Dating</span>
-                  <span className="text-green-600 dark:text-green-400 font-medium">$34,545</span>
+                  <span className="text-gray-600 dark:text-gray-400">Конверсії</span>
+                  <span className="text-blue-600 dark:text-blue-400 font-medium">{metrics.totalConversions.toLocaleString()}</span>
                 </div>
               </div>
             </div>
 
             <div className="card">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Конверсії по платформах
+                Фінанси
               </h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Facebook</span>
-                  <span className="text-blue-600 dark:text-blue-400 font-medium">8.0%</span>
+              <div className="space-y-2">
+                <div className="flex items-center justify_between">
+                  <span className="text-gray-600 dark:text-gray-400">Витрати</span>
+                  <span className="text-red-600 dark:text-red-400 font-medium">{formatCurrency(metrics.totalSpent)}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Google Ads</span>
-                  <span className="text-blue-600 dark:text-blue-400 font-medium">6.4%</span>
+                  <span className="text-gray-600 dark:text-gray-400">Дохід</span>
+                  <span className="text-green-600 dark:text-green-400 font-medium">{formatCurrency(metrics.totalRevenue)}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">TikTok</span>
-                  <span className="text-blue-600 dark:text-blue-400 font-medium">8.0%</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="card">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                ROI по категоріях
-              </h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">E-commerce</span>
-                  <span className="text-green-600 dark:text-green-400 font-medium">370.2%</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Gambling</span>
-                  <span className="text-green-600 dark:text-green-400 font-medium">1417.5%</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600 dark:text-gray-400">Dating</span>
-                  <span className="text-green-600 dark:text-green-400 font-medium">2878.8%</span>
+                  <span className="text-gray-600 dark:text-gray-400">Прибуток</span>
+                  <span className="text-green-600 dark:text-green-400 font-medium">{formatCurrency(metrics.totalProfit)}</span>
                 </div>
               </div>
             </div>
@@ -518,7 +527,7 @@ export default function PerformanceReports() {
                 <div>
                   <p className="text-sm text-gray-600 dark:text-gray-400">Ефективність</p>
                   <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {formatPercentage((metrics.completedTasks / (metrics.completedTasks + metrics.pendingTasks + metrics.overdueTasks)) * 100)}
+                    {formatPercentage((metrics.completedTasks / (metrics.completedTasks + metrics.pendingTasks + metrics.overdueTasks || 1)) * 100)}
                   </p>
                 </div>
               </div>

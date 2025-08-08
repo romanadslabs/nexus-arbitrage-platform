@@ -1,4 +1,4 @@
-import { Offer, OfferLink, LinkStats } from '@/types/offers'
+import { Offer, OfferLink, LinkStats, OfferComment } from '@/types/offers'
 
 // Local Storage Keys
 const LOCAL_STORAGE_KEYS = {
@@ -41,6 +41,22 @@ export const OffersService = {
       offers[index] = { ...offers[index], ...updates, updatedAt: new Date() }
       localStorage.setItem(LOCAL_STORAGE_KEYS.OFFERS, JSON.stringify(offers))
     }
+  },
+
+  // Додавання коментаря до оффера
+  addCommentToOffer: (offerId: string, comment: OfferComment): void => {
+    const offers = OffersService.getAllOffers()
+    const index = offers.findIndex(o => o.id === offerId)
+    if (index === -1) return
+    const prev = offers[index].comments || []
+    offers[index] = { ...offers[index], comments: [...prev, comment], updatedAt: new Date() as any }
+    localStorage.setItem(LOCAL_STORAGE_KEYS.OFFERS, JSON.stringify(offers))
+  },
+
+  // Отримати коментарі оффера
+  getOfferComments: (offerId: string): OfferComment[] => {
+    const offer = OffersService.getOfferById(offerId)
+    return offer?.comments || []
   },
 
   // Видалення оффера

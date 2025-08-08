@@ -10,6 +10,8 @@ interface AccountGroupsProps {
   onUpdate: (accountId: string, updates: Partial<Account>) => void
   onDelete: (accountId: string) => void
   onTransfer: (accountId: string) => void
+  onView?: (account: Account) => void
+  onEdit?: (account: Account) => void
   groupBy: 'platform' | 'status' | 'category' | 'priority' | 'none'
   viewMode: 'cards' | 'list'
   onGroupByChange: (groupBy: 'platform' | 'status' | 'category' | 'priority' | 'none') => void
@@ -21,6 +23,8 @@ export default function AccountGroups({
   onUpdate, 
   onDelete, 
   onTransfer, 
+  onView,
+  onEdit,
   groupBy, 
   viewMode, 
   onGroupByChange, 
@@ -130,16 +134,16 @@ export default function AccountGroups({
       
       switch (groupBy) {
         case 'platform':
-          groupKey = account.platform
+          groupKey = (account as any).platform
           break
         case 'status':
-          groupKey = account.status
+          groupKey = (account as any).status
           break
         case 'category':
-          groupKey = account.category
+          groupKey = (account as any).category
           break
         case 'priority':
-          groupKey = account.priority
+          groupKey = (account as any).priority
           break
       }
       
@@ -157,10 +161,11 @@ export default function AccountGroups({
   const renderAccountCard = (account: Account) => (
     <AccountCard
       key={account.id}
-      account={account}
-      statusConfig={{ label: getGroupLabel(account.status), color: getGroupColor(account.status) }}
+      account={account as any}
+      statusConfig={{ label: getGroupLabel((account as any).status), color: getGroupColor((account as any).status) }}
       onDelete={() => onDelete(account.id)}
-      onEdit={() => {}} // Додаємо пусту функцію для onEdit
+      onEdit={() => onEdit?.(account)}
+      onView={() => onView?.(account)}
     />
   )
 
@@ -168,18 +173,18 @@ export default function AccountGroups({
     <div key={account.id} className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
       <div className="flex items-center space-x-4">
         <div className="flex items-center space-x-2">
-          {getGroupIcon(account.platform)}
-          <span className="font-medium text-gray-900 dark:text-white">{account.name}</span>
+          {getGroupIcon((account as any).platform)}
+          <span className="font-medium text-gray-900 dark:text-white">{(account as any).name}</span>
         </div>
-        <span className="text-sm text-gray-500 dark:text-gray-400">{account.email}</span>
+        <span className="text-sm text-gray-500 dark:text-gray-400">{(account as any).email}</span>
         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-          account.status === 'ready_for_ads' ? 'bg-green-100 text-green-800' :
-          account.status.includes('farming') ? 'bg-blue-100 text-blue-800' :
-          account.status.includes('blocked') ? 'bg-orange-100 text-orange-800' :
-          account.status === 'sold' ? 'bg-purple-100 text-purple-800' :
+          (account as any).status === 'ready_for_ads' ? 'bg-green-100 text-green-800' :
+          ((account as any).status || '').includes('farming') ? 'bg-blue-100 text-blue-800' :
+          ((account as any).status || '').includes('blocked') ? 'bg-orange-100 text-orange-800' :
+          (account as any).status === 'sold' ? 'bg-purple-100 text-purple-800' :
           'bg-gray-100 text-gray-800'
         }`}>
-          {getGroupLabel(account.status)}
+          {getGroupLabel((account as any).status)}
         </span>
       </div>
       <div className="flex items-center space-x-2">
@@ -272,10 +277,10 @@ export default function AccountGroups({
             
             <div className="flex items-center space-x-4">
               <div className="text-sm text-gray-600 dark:text-gray-400">
-                {groupAccounts.filter(acc => acc.status === 'ready_for_ads').length} готових
+                {groupAccounts.filter(acc => (acc as any).status === 'ready_for_ads').length} готових
               </div>
               <div className="text-sm text-gray-600 dark:text-gray-400">
-                {groupAccounts.filter(acc => acc.status.includes('farming')).length} в фармінгу
+                {groupAccounts.filter(acc => ((acc as any).status || '').includes('farming')).length} в фармінгу
               </div>
             </div>
           </div>

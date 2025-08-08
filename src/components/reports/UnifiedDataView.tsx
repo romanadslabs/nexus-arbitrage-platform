@@ -1,41 +1,82 @@
 'use client'
 
-import React, { useState } from 'react'
-import { useAccounts, useOffers, useExpenses, useTeamMembers } from '@/hooks/useUnifiedData'
+import React, { useEffect, useMemo, useState } from 'react'
 import UnifiedDataTable from './UnifiedDataTable'
 import { Database, Users, Target, CreditCard, RefreshCw } from 'lucide-react'
+import { useData } from '@/components/providers/DataProvider'
+import { OffersService } from '@/lib/offers'
+import type { Offer } from '@/types/offers'
 
 interface UnifiedDataViewProps {
-  defaultTable?: 'accounts' | 'offers' | 'expenses' | 'team'
+  defaultTable?: 'accounts' | 'offers' | 'expenses' | 'team' | 'cards' | 'proxies' | 'campaigns'
 }
 
 export default function UnifiedDataView({ defaultTable = 'accounts' }: UnifiedDataViewProps) {
   const [selectedTable, setSelectedTable] = useState(defaultTable)
   const [filters, setFilters] = useState<Record<string, any>>({})
 
-  // Використання хуків для отримання даних
-  const accountsData = useAccounts({ filters: selectedTable === 'accounts' ? filters : undefined })
-  const offersData = useOffers({ filters: selectedTable === 'offers' ? filters : undefined })
-  const expensesData = useExpenses({ filters: selectedTable === 'expenses' ? filters : undefined })
-  const teamData = useTeamMembers({ filters: selectedTable === 'team' ? filters : undefined })
+  // Реальні дані з DataProvider
+  const { accounts, expenses, workspace, cards, proxies, campaigns } = useData()
 
-  // Отримання поточних даних
-  const getCurrentData = () => {
-    switch (selectedTable) {
-      case 'accounts':
-        return accountsData
-      case 'offers':
-        return offersData
-      case 'expenses':
-        return expensesData
-      case 'team':
-        return teamData
-      default:
-        return accountsData
+  // Реальні оффери з localStorage
+  const [offers, setOffers] = useState<Offer[]>([])
+  const [offersLoading, setOffersLoading] = useState(false)
+  const [offersError, setOffersError] = useState<string | null>(null)
+
+  const loadOffers = () => {
+    try {
+      setOffersLoading(true)
+      setOffersError(null)
+      const data = OffersService.getAllOffers()
+      setOffers(Array.isArray(data) ? data : [])
+    } catch (e) {
+      setOffersError('Не вдалося завантажити оффери')
+    } finally {
+      setOffersLoading(false)
     }
   }
 
-  const currentData = getCurrentData()
+  useEffect(() => {
+    loadOffers()
+  }, [])
+
+  // Поточні дані для таблиці у форматі, сумісному з UnifiedDataTable
+  const currentData = useMemo(() => {
+    switch (selectedTable) {
+      case 'accounts': {
+        const data = Array.isArray(accounts) ? accounts : []
+        return { data, loading: false, error: null as string | null, refetch: () => {}, total: data.length }
+      }
+      case 'offers': {
+        const data = Array.isArray(offers) ? offers : []
+        return { data, loading: offersLoading, error: offersError, refetch: loadOffers, total: data.length }
+      }
+      case 'expenses': {
+        const data = Array.isArray(expenses) ? expenses : []
+        return { data, loading: false, error: null as string | null, refetch: () => {}, total: data.length }
+      }
+      case 'team': {
+        const data = Array.isArray(workspace?.team) ? workspace!.team : []
+        return { data, loading: false, error: null as string | null, refetch: () => {}, total: data.length }
+      }
+      case 'cards': {
+        const data = Array.isArray(cards) ? cards : []
+        return { data, loading: false, error: null as string | null, refetch: () => {}, total: data.length }
+      }
+      case 'proxies': {
+        const data = Array.isArray(proxies) ? proxies : []
+        return { data, loading: false, error: null as string | null, refetch: () => {}, total: data.length }
+      }
+      case 'campaigns': {
+        const data = Array.isArray(campaigns) ? campaigns : []
+        return { data, loading: false, error: null as string | null, refetch: () => {}, total: data.length }
+      }
+      default: {
+        const data: any[] = []
+        return { data, loading: false, error: null as string | null, refetch: () => {}, total: 0 }
+      }
+    }
+  }, [selectedTable, accounts, offers, offersLoading, offersError, expenses, workspace, cards, proxies, campaigns])
 
   // Конфігурація колонок для кожної таблиці
   const getColumns = () => {
@@ -47,7 +88,6 @@ export default function UnifiedDataView({ defaultTable = 'accounts' }: UnifiedDa
           { key: 'phone', label: 'Телефон', type: 'text' as const, sortable: false, filterable: false },
           { key: 'platform', label: 'Платформа', type: 'badge' as const, sortable: true, filterable: true },
           { key: 'status', label: 'Статус', type: 'status' as const, sortable: true, filterable: true },
-          { key: 'category', label: 'Категорія', type: 'text' as const, sortable: true, filterable: true },
           { key: 'priority', label: 'Пріоритет', type: 'badge' as const, sortable: true, filterable: true },
           { key: 'farmerId', label: 'Farmer ID', type: 'text' as const, sortable: false, filterable: false },
           { key: 'createdAt', label: 'Створено', type: 'date' as const, sortable: true, filterable: false }
@@ -70,12 +110,9 @@ export default function UnifiedDataView({ defaultTable = 'accounts' }: UnifiedDa
       case 'expenses':
         return [
           { key: 'name', label: 'Назва', type: 'text' as const, sortable: true, filterable: true },
-          { key: 'expenseType', label: 'Тип', type: 'badge' as const, sortable: true, filterable: true },
           { key: 'amount', label: 'Сума', type: 'currency' as const, sortable: true, filterable: false },
-          { key: 'linkedOffer', label: 'Пов\'язаний оффер', type: 'text' as const, sortable: false, filterable: false },
-          { key: 'linkedCard', label: 'Пов\'язана карта', type: 'text' as const, sortable: false, filterable: false },
-          { key: 'linkedProxy', label: 'Пов\'язаний проксі', type: 'text' as const, sortable: false, filterable: false },
           { key: 'date', label: 'Дата', type: 'date' as const, sortable: true, filterable: false },
+          { key: 'accountId', label: 'ID аккаунта', type: 'text' as const, sortable: true, filterable: true },
           { key: 'description', label: 'Опис', type: 'text' as const, sortable: false, filterable: false },
           { key: 'createdAt', label: 'Створено', type: 'date' as const, sortable: true, filterable: false }
         ]
@@ -83,11 +120,47 @@ export default function UnifiedDataView({ defaultTable = 'accounts' }: UnifiedDa
       case 'team':
         return [
           { key: 'name', label: 'Ім\'я', type: 'text' as const, sortable: true, filterable: true },
-          { key: 'email', label: 'Email', type: 'text' as const, sortable: true, filterable: true },
-          { key: 'role', label: 'Роль', type: 'badge' as const, sortable: true, filterable: true },
+          { key: 'role', label: 'Роль', type: 'badge' as const, sortable: true, filterable: true }
+        ]
+
+      case 'cards':
+        return [
+          { key: 'number', label: 'Номер', type: 'text' as const, sortable: true, filterable: false },
+          { key: 'type', label: 'Тип', type: 'badge' as const, sortable: true, filterable: true },
           { key: 'status', label: 'Статус', type: 'status' as const, sortable: true, filterable: true },
-          { key: 'joinDate', label: 'Дата приєднання', type: 'date' as const, sortable: true, filterable: false },
+          { key: 'balance', label: 'Баланс', type: 'currency' as const, sortable: true, filterable: false },
+          { key: 'country', label: 'Країна', type: 'text' as const, sortable: true, filterable: true },
+          { key: 'bank', label: 'Банк', type: 'text' as const, sortable: true, filterable: true },
+          { key: 'cost', label: 'Собівартість', type: 'currency' as const, sortable: true, filterable: false },
+          { key: 'assignedTo', label: 'Призначено', type: 'text' as const, sortable: false, filterable: false },
           { key: 'createdAt', label: 'Створено', type: 'date' as const, sortable: true, filterable: false }
+        ]
+
+      case 'proxies':
+        return [
+          { key: 'ip', label: 'IP', type: 'text' as const, sortable: true, filterable: false },
+          { key: 'port', label: 'Порт', type: 'number' as const, sortable: true, filterable: false },
+          { key: 'type', label: 'Тип', type: 'badge' as const, sortable: true, filterable: true },
+          { key: 'status', label: 'Статус', type: 'status' as const, sortable: true, filterable: true },
+          { key: 'country', label: 'Країна', type: 'text' as const, sortable: true, filterable: true },
+          { key: 'speed', label: 'Швидкість', type: 'number' as const, sortable: true, filterable: false },
+          { key: 'uptime', label: 'Uptime %', type: 'percentage' as const, sortable: true, filterable: false },
+          { key: 'cost', label: 'Собівартість', type: 'currency' as const, sortable: true, filterable: false },
+          { key: 'assignedTo', label: 'Призначено', type: 'text' as const, sortable: false, filterable: false },
+          { key: 'createdAt', label: 'Створено', type: 'date' as const, sortable: true, filterable: false }
+        ]
+
+      case 'campaigns':
+        return [
+          { key: 'name', label: 'Назва', type: 'text' as const, sortable: true, filterable: true },
+          { key: 'platform', label: 'Платформа', type: 'badge' as const, sortable: true, filterable: true },
+          { key: 'status', label: 'Статус', type: 'status' as const, sortable: true, filterable: true },
+          { key: 'budget', label: 'Бюджет', type: 'currency' as const, sortable: true, filterable: false },
+          { key: 'spent', label: 'Витрачено', type: 'currency' as const, sortable: true, filterable: false },
+          { key: 'accountId', label: 'ID аккаунта', type: 'text' as const, sortable: true, filterable: true },
+          { key: 'launcherId', label: 'Launcher', type: 'text' as const, sortable: true, filterable: true },
+          { key: 'createdAt', label: 'Створено', type: 'date' as const, sortable: true, filterable: false },
+          { key: 'updatedAt', label: 'Оновлено', type: 'date' as const, sortable: true, filterable: false }
         ]
 
       default:
@@ -98,17 +171,14 @@ export default function UnifiedDataView({ defaultTable = 'accounts' }: UnifiedDa
   // Обробники дій
   const handleEdit = (id: string) => {
     console.log(`Редагування ${selectedTable} з ID:`, id)
-    // Тут можна додати логіку редагування
   }
 
   const handleDelete = (id: string) => {
     console.log(`Видалення ${selectedTable} з ID:`, id)
-    // Тут можна додати логіку видалення
   }
 
   const handleView = (id: string) => {
     console.log(`Перегляд ${selectedTable} з ID:`, id)
-    // Тут можна додати логіку перегляду
   }
 
   const handleExport = () => {
@@ -152,26 +222,44 @@ export default function UnifiedDataView({ defaultTable = 'accounts' }: UnifiedDa
       case 'accounts':
         return {
           title: 'Аккаунти',
-          description: 'Управління рекламними аккаунтами з різних платформ',
+          description: 'Реальні аккаунти з розділу Аккаунти',
           icon: Users
         }
       case 'offers':
         return {
           title: 'Оффери',
-          description: 'Оффери з різних вертикалей та джерел трафіку',
+          description: 'Реальні оффери з локального сховища',
           icon: Target
         }
       case 'expenses':
         return {
           title: 'Витрати',
-          description: 'Витрати по категоріях та зв\'язки з офферами',
+          description: 'Реальні витрати, пов\'язані з аккаунтами/кампаніями',
           icon: CreditCard
         }
       case 'team':
         return {
           title: 'Команда',
-          description: 'Члени команди та їх ролі',
+          description: 'Учасники команди з робочого простору',
           icon: Users
+        }
+      case 'cards':
+        return {
+          title: 'Карти',
+          description: 'Платіжні карти та їх статуси',
+          icon: CreditCard
+        }
+      case 'proxies':
+        return {
+          title: 'Проксі',
+          description: 'Проксі-сервери, стан і призначення',
+          icon: Database
+        }
+      case 'campaigns':
+        return {
+          title: 'Кампанії',
+          description: 'Реальні кампанії з розділу Кампанії',
+          icon: Target
         }
       default:
         return {
@@ -193,7 +281,10 @@ export default function UnifiedDataView({ defaultTable = 'accounts' }: UnifiedDa
           { key: 'accounts', label: 'Аккаунти', icon: Users },
           { key: 'offers', label: 'Оффери', icon: Target },
           { key: 'expenses', label: 'Витрати', icon: CreditCard },
-          { key: 'team', label: 'Команда', icon: Users }
+          { key: 'team', label: 'Команда', icon: Users },
+          { key: 'cards', label: 'Карти', icon: CreditCard },
+          { key: 'proxies', label: 'Проксі', icon: Database },
+          { key: 'campaigns', label: 'Кампанії', icon: Target }
         ].map(({ key, label, icon: Icon }) => (
           <button
             key={key}

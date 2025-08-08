@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест роботи Nexus</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+        }
+        .test-button {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 15px 30px;
+            text-decoration: none;
+            border-radius: 10px;
+            margin: 10px;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .test-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        .status {
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-weight: bold;
+        }
+        .status.success {
+            background: rgba(76, 175, 80, 0.3);
+            border: 1px solid #4CAF50;
+        }
+        .status.error {
+            background: rgba(244, 67, 54, 0.3);
+            border: 1px solid #f44336;
+        }
+        .status.warning {
+            background: rgba(255, 152, 0, 0.3);
+            border: 1px solid #FF9800;
+        }
+        .fix-list {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .fix-list h3 {
+            margin-top: 0;
+        }
+        .fix-list ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .fix-list li {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Тест роботи Nexus</h1>
+        
+        <div class="status success">
+            <h3>✅ Виправлення застосовані!</h3>
+            <p>Всі помилки імпорту та серверного рендерингу виправлені.</p>
+        </div>
+
+        <div class="fix-list">
+            <h3>🔧 Що було виправлено:</h3>
+            <ul>
+                <li>✅ Видалено проблемний імпорт LoadingSpinner</li>
+                <li>✅ Додано перевірки window для localStorage</li>
+                <li>✅ Спрощено головну сторінку для тестування</li>
+                <li>✅ Виправлено серверний рендеринг</li>
+                <li>✅ Додано захист від помилок на сервері</li>
+            </ul>
+        </div>
+
+        <h3>🔗 Тестування:</h3>
+        
+        <a href="http://localhost:3000/" class="test-button">
+            🏠 Головна сторінка
+        </a>
+        
+        <a href="http://localhost:3000/login" class="test-button">
+            📝 Вхід в систему
+        </a>
+        
+        <a href="http://localhost:3000/register" class="test-button">
+            📋 Реєстрація
+        </a>
+
+        <div class="status warning">
+            <h3>🎯 Інструкції для тестування:</h3>
+            <ol>
+                <li><strong>Спробуйте зайти на головну сторінку</strong> - має перенаправити на вхід</li>
+                <li><strong>Увійдіть як адміністратор:</strong> admin@nexus.com / admin123</li>
+                <li><strong>Перевірте, чи працює головна сторінка</strong> після входу</li>
+                <li><strong>Спробуйте адмін панель</strong> в сайдбарі</li>
+            </ol>
+        </div>
+
+        <div id="server-status" class="status error">
+            <h3>🔍 Статус сервера:</h3>
+            <p>Перевіряємо...</p>
+        </div>
+
+        <div class="status success">
+            <h3>📊 Очікуваний результат:</h3>
+            <ul>
+                <li>✅ Немає помилок в консолі</li>
+                <li>✅ Автоматичне перенаправлення на вхід</li>
+                <li>✅ Працююча авторизація</li>
+                <li>✅ Доступна адмін панель</li>
+                <li>✅ Стабільна робота всіх сторінок</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Перевірка доступності сервера
+        const checkServer = async () => {
+            try {
+                const response = await fetch('http://localhost:3000/api/test');
+                const statusDiv = document.getElementById('server-status');
+                
+                if (response.ok) {
+                    statusDiv.className = 'status success';
+                    statusDiv.innerHTML = '<h3>✅ Сервер працює!</h3><p>Можна тестувати систему</p>';
+                } else {
+                    statusDiv.className = 'status warning';
+                    statusDiv.innerHTML = '<h3>⚠️ Сервер відповідає з помилкою</h3><p>Спробуйте оновити сторінку</p>';
+                }
+            } catch (error) {
+                const statusDiv = document.getElementById('server-status');
+                statusDiv.className = 'status error';
+                statusDiv.innerHTML = '<h3>❌ Сервер недоступний</h3><p>Запустіть npm run dev</p>';
+            }
+        };
+
+        // Перевіряємо сервер при завантаженні
+        checkServer();
+        
+        // Перевіряємо кожні 3 секунди
+        setInterval(checkServer, 3000);
+    </script>
+</body>
+</html> 

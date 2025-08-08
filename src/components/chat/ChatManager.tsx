@@ -1,8 +1,10 @@
 'use client'
 
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef, useMemo } from 'react'
 import { motion } from 'framer-motion'
+import Link from 'next/link'
 import { useAuth } from '@/components/providers/AuthProvider'
+import { useData } from '@/components/providers/DataProvider'
 import Button from '@/components/ui/Button'
 import LoadingState from '@/components/ui/LoadingState'
 import { 
@@ -14,9 +16,6 @@ import {
   MoreVertical,
   Smile,
   Paperclip,
-  Mic,
-  Phone,
-  Video,
   Search,
   Filter,
   RefreshCw,
@@ -26,8 +25,11 @@ import {
   ThumbsUp,
   Clock,
   Check,
-  CheckCheck
+  CheckCheck,
+  Link as LinkIcon,
+  ListChecks
 } from 'lucide-react'
+import { OffersService } from '@/lib/offers'
 
 interface ChatMessage {
   id: string
@@ -38,6 +40,7 @@ interface ChatMessage {
   reactions: { emoji: string; userId: string }[]
   isEdited: boolean
   attachments?: { type: 'image' | 'file'; url: string; name: string }[]
+  replyTo?: string
 }
 
 interface ChatWorkspace {
@@ -50,8 +53,13 @@ interface ChatWorkspace {
   isActive: boolean
 }
 
+type RefType = 'account' | 'card' | 'proxy' | 'campaign' | 'offer'
+
 export default function ChatManager() {
   const { user } = useAuth()
+  const { addChatMessage, addTask, accounts, cards, proxies, campaigns } = useData() as any
+  const [offers, setOffers] = useState<any[]>([])
+
   const [workspaces, setWorkspaces] = useState<ChatWorkspace[]>([])
   const [currentWorkspace, setCurrentWorkspace] = useState<ChatWorkspace | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -60,6 +68,22 @@ export default function ChatManager() {
   const [showCreateWorkspace, setShowCreateWorkspace] = useState(false)
   const [showAddMember, setShowAddMember] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [replyTo, setReplyTo] = useState<ChatMessage | null>(null)
+  const [showEmojiPickerFor, setShowEmojiPickerFor] = useState<string | null>(null)
+
+  // Reference picker state
+  const [showRefPicker, setShowRefPicker] = useState(false)
+  const [refType, setRefType] = useState<RefType>('account')
+  const [refQuery, setRefQuery] = useState('')
+
+  useEffect(() => {
+    try {
+      const all = OffersService.getAllOffers?.() || []
+      setOffers(all)
+    } catch {
+      setOffers([])
+    }
+  }, [])
 
   // Форма для створення робочого простору
   const [workspaceForm, setWorkspaceForm] = useState({
@@ -104,7 +128,7 @@ export default function ChatManager() {
       const mockMessages: ChatMessage[] = [
         {
           id: '1',
-          content: 'Привіт команда! Як справи з новими аккаунтами?',
+          content: 'Привіт команда! Як справи з новими аккаунтами? [account:acc_1|Test Account] Ось оффер [offer:off_1|Crypto Offer] ',
           senderId: '1',
           senderName: 'Олександр Петренко',
           timestamp: new Date(Date.now() - 3600000),
@@ -119,24 +143,6 @@ export default function ChatManager() {
           timestamp: new Date(Date.now() - 1800000),
           reactions: [],
           isEdited: false
-        },
-        {
-          id: '3',
-          content: 'Чудово! Петро, як справи з фармінгом?',
-          senderId: '1',
-          senderName: 'Олександр Петренко',
-          timestamp: new Date(Date.now() - 900000),
-          reactions: [],
-          isEdited: false
-        },
-        {
-          id: '4',
-          content: 'День 2 завершений, всі аккаунти в нормі. Завтра переходжу на день 3.',
-          senderId: '3',
-          senderName: 'Петро Сидоренко',
-          timestamp: new Date(Date.now() - 300000),
-          reactions: [{ emoji: '❤️', userId: '1' }, { emoji: '👍', userId: '2' }],
-          isEdited: false
         }
       ]
       setMessages(mockMessages)
@@ -148,7 +154,7 @@ export default function ChatManager() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  const sendMessage = () => {
+  const sendMessage = async () => {
     if (!newMessage.trim() || !currentWorkspace || !user) return
 
     const message: ChatMessage = {
@@ -158,11 +164,16 @@ export default function ChatManager() {
       senderName: user.name,
       timestamp: new Date(),
       reactions: [],
-      isEdited: false
+      isEdited: false,
+      replyTo: replyTo?.id
     }
 
     setMessages(prev => [...prev, message])
     setNewMessage('')
+    setReplyTo(null)
+
+    // Persist to workspace storage
+    await addChatMessage({ text: message.content, authorId: user.id, authorName: user.name, channelId: currentWorkspace.id, replyTo: replyTo?.id })
   }
 
   const addReaction = (messageId: string, emoji: string) => {
@@ -185,6 +196,32 @@ export default function ChatManager() {
       }
       return msg
     }))
+  }
+
+  const createTaskFromMessage = async (source: ChatMessage) => {
+    if (!user) return
+    await addTask({
+      title: `Задача з чату: ${source.content.slice(0, 40)}`,
+      description: source.content,
+      assigneeId: user.id,
+      dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+      status: 'todo',
+      priority: 'medium',
+    })
+  }
+
+  const createTaskFromInput = async () => {
+    if (!user || !newMessage.trim()) return
+    const content = newMessage.trim()
+    await addTask({
+      title: content.slice(0, 60),
+      description: content,
+      assigneeId: user.id,
+      dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
+      status: 'todo',
+      priority: 'medium',
+    })
+    setNewMessage('')
   }
 
   const createWorkspace = () => {
@@ -218,6 +255,69 @@ export default function ChatManager() {
     if (days === 1) return 'Вчора'
     if (days < 7) return `${days} днів тому`
     return date.toLocaleDateString('uk-UA')
+  }
+
+  // Reference search data
+  const refData = useMemo(() => ({
+    account: Array.isArray(accounts) ? accounts : [],
+    card: Array.isArray(cards) ? cards : [],
+    proxy: Array.isArray(proxies) ? proxies : [],
+    campaign: Array.isArray(campaigns) ? campaigns : [],
+    offer: Array.isArray(offers) ? offers : [],
+  }), [accounts, cards, proxies, campaigns, offers])
+
+  const filteredRefs = useMemo(() => {
+    const list = refData[refType] || []
+    const q = refQuery.toLowerCase()
+    return list.filter((item: any) => {
+      const name = (item.name || item.email || item.number || item.ip || item.id || '').toString().toLowerCase()
+      return name.includes(q)
+    }).slice(0, 8)
+  }, [refData, refType, refQuery])
+
+  const appendReference = (type: RefType, item: any) => {
+    const label = (item.name || item.email || item.number || item.ip || item.id)
+    const token = `[${type}:${item.id}|${label}]`
+    setNewMessage(prev => `${prev.trim()} ${token} `.trim())
+    setShowRefPicker(false)
+    setRefQuery('')
+  }
+
+  const renderContent = (text: string) => {
+    const parts: React.ReactNode[] = []
+    const regex = /\[(account|card|proxy|campaign|offer):([^\|\]]+)\|([^\]]+)\]/g
+    let lastIndex = 0
+    let match: RegExpExecArray | null
+
+    while ((match = regex.exec(text)) !== null) {
+      const [full, type, id, label] = match
+      const start = match.index
+      if (start > lastIndex) {
+        parts.push(<span key={`t-${start}`}>{text.slice(lastIndex, start)}</span>)
+      }
+      let href = '#'
+      if (type === 'account') href = `/accounts?focus=${id}`
+      if (type === 'card') href = `/cards-proxies?tab=cards&focus=${id}`
+      if (type === 'proxy') href = `/cards-proxies?tab=proxies&focus=${id}`
+      if (type === 'campaign') href = `/campaigns?focus=${id}`
+      if (type === 'offer') href = `/offers?focus=${id}`
+      parts.push(
+        <Link
+          key={`ref-${type}-${id}-${start}`}
+          href={href}
+          className="inline-flex items-center px-2 py-0.5 text-xs rounded-full bg-indigo-100 text-indigo-700 hover:bg-indigo-200 mr-1"
+        >
+          <LinkIcon className="w-3 h-3 mr-1" />{label}
+        </Link>
+      )
+      lastIndex = start + full.length
+    }
+
+    if (lastIndex < text.length) {
+      parts.push(<span key={`t-end`}>{text.slice(lastIndex)}</span>)
+    }
+
+    return <>{parts}</>
   }
 
   if (isLoading) {
@@ -323,12 +423,6 @@ export default function ChatManager() {
                   <Button variant="outline" icon={Search} size="sm">
                     <Search size={16} />
                   </Button>
-                  <Button variant="outline" icon={Phone} size="sm">
-                    <Phone size={16} />
-                  </Button>
-                  <Button variant="outline" icon={Video} size="sm">
-                    <Video size={16} />
-                  </Button>
                   <Button variant="outline" icon={MoreVertical} size="sm">
                     <MoreVertical size={16} />
                   </Button>
@@ -375,7 +469,12 @@ export default function ChatManager() {
                             ? 'bg-blue-500 text-white' 
                             : 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-600'
                         }`}>
-                          <p className="text-sm">{message.content}</p>
+                          <div className="text-sm break-words whitespace-pre-wrap">{renderContent(message.content)}</div>
+                          {message.replyTo && (
+                            <div className="mt-2 text-xs text-gray-200 dark:text-gray-300/80">
+                              У відповідь на повідомлення #{message.replyTo}
+                            </div>
+                          )}
                           
                           {/* Реакції */}
                           {message.reactions.length > 0 && (
@@ -429,8 +528,33 @@ export default function ChatManager() {
                         >
                           😊
                         </button>
+                        <button
+                          onClick={() => setReplyTo(message)}
+                          className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-xs"
+                          title="Відповісти"
+                        >↩</button>
+                        <button
+                          onClick={() => createTaskFromMessage(message)}
+                          className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-xs"
+                          title="Створити задачу"
+                        >🗂</button>
+                        <button
+                          onClick={() => setShowEmojiPickerFor(prev => prev === message.id ? null : message.id)}
+                          className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-xs"
+                          title="Ще реакції"
+                        >😊+</button>
                       </div>
                     </motion.div>
+                    {/* Простий emoji picker */}
+                    {showEmojiPickerFor === message.id && (
+                      <div className="mt-2 flex space-x-1">
+                        {['😀','😂','😅','🔥','👏','🎉','🤝','❗'].map(e => (
+                          <button key={e} onClick={() => { addReaction(message.id, e); setShowEmojiPickerFor(null) }} className="px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded">
+                            {e}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )
               })}
@@ -439,23 +563,38 @@ export default function ChatManager() {
 
             {/* Поле введення */}
             <div className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4">
-              <div className="flex items-center space-x-2">
-                <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
-                  <Paperclip className="w-5 h-5 text-gray-500" />
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowRefPicker(v => !v)}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                  title="Вставити посилання на сутність"
+                >
+                  <LinkIcon className="w-5 h-5 text-gray-500" />
                 </button>
                 <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
                   <Smile className="w-5 h-5 text-gray-500" />
                 </button>
                 <div className="flex-1">
+                  {replyTo && (
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Відповідь на: {replyTo.content.slice(0,50)} <button className="ml-2 underline" onClick={() => setReplyTo(null)}>скасувати</button></div>
+                  )}
                   <input
                     type="text"
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-                    placeholder="Напишіть повідомлення..."
+                    placeholder="Напишіть повідомлення... (можна вставляти [account:id|Назва], [card:id|Номер] тощо)"
                     className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   />
                 </div>
+                <button
+                  onClick={createTaskFromInput}
+                  disabled={!newMessage.trim()}
+                  className="p-2 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-300 dark:disabled:bg-gray-600 text-white rounded-lg transition-colors"
+                  title="Створити задачу з тексту"
+                >
+                  <ListChecks className="w-5 h-5" />
+                </button>
                 <button
                   onClick={sendMessage}
                   disabled={!newMessage.trim()}
@@ -463,10 +602,47 @@ export default function ChatManager() {
                 >
                   <Send className="w-5 h-5" />
                 </button>
-                <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
-                  <Mic className="w-5 h-5 text-gray-500" />
-                </button>
               </div>
+
+              {/* Reference Picker */}
+              {showRefPicker && (
+                <div className="mt-3 p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900">
+                  <div className="flex items-center gap-2 mb-2">
+                    <select
+                      value={refType}
+                      onChange={(e) => setRefType(e.target.value as RefType)}
+                      className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded"
+                    >
+                      <option value="account">Аккаунт</option>
+                      <option value="card">Карта</option>
+                      <option value="proxy">Проксі</option>
+                      <option value="campaign">Кампанія</option>
+                      <option value="offer">Оффер</option>
+                    </select>
+                    <input
+                      value={refQuery}
+                      onChange={(e) => setRefQuery(e.target.value)}
+                      placeholder="Пошук..."
+                      className="flex-1 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded"
+                    />
+                  </div>
+                  <div className="max-h-40 overflow-y-auto divide-y divide-gray-200 dark:divide-gray-700">
+                    {filteredRefs.length === 0 && (
+                      <div className="text-sm text-gray-500 py-2">Нічого не знайдено</div>
+                    )}
+                    {filteredRefs.map((item: any) => (
+                      <button
+                        key={item.id}
+                        onClick={() => appendReference(refType, item)}
+                        className="w-full text-left px-2 py-2 hover:bg-gray-100 dark:hover:bg-gray-800 text-sm"
+                      >
+                        {(item.name || item.email || item.number || item.ip || item.id)}
+                        <span className="text-xs text-gray-500 ml-2">[{refType}:{item.id}]</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </>
         ) : (

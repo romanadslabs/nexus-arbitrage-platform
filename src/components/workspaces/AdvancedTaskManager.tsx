@@ -1,6 +1,8 @@
 'use client'
 
 import React, { useState, useEffect, useRef } from 'react'
+import { useData } from '@/components/providers/DataProvider'
+import { useAuth } from '@/components/providers/AuthProvider'
 import { 
   Plus, 
   Search, 
@@ -82,6 +84,10 @@ interface AdvancedTaskManagerProps {
 }
 
 export default function AdvancedTaskManager({ workspaceId, currentUser, currentUserId = '1' }: AdvancedTaskManagerProps) {
+  const { workspace, addTask, updateTask, deleteTask, addCommentToTask } = useData()
+  const { user, getAllUsers } = useAuth() as any
+  const users = typeof getAllUsers === 'function' ? getAllUsers() : []
+
   const [tasks, setTasks] = useState<Task[]>([
     {
       id: '1',
@@ -221,6 +227,48 @@ export default function AdvancedTaskManager({ workspaceId, currentUser, currentU
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [showTaskModal, setShowTaskModal] = useState(false)
   const [newComment, setNewComment] = useState('')
+  const [createForm, setCreateForm] = useState({
+    title: '',
+    description: '',
+    assigneeId: '',
+    assignee: '',
+    dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    priority: 'medium' as Task['priority'],
+    status: 'todo' as Task['status'],
+    tags: [] as string[],
+  })
+
+  // Синхронізація з Workspace (localStorage)
+  useEffect(() => {
+    if (workspace?.tasks) {
+      // Конвертація полів дат, якщо прийшли як рядки
+      const normalized = workspace.tasks.map((t: any) => ({
+        ...t,
+        dueDate: t?.dueDate ? new Date(t.dueDate) : new Date(),
+        createdAt: t?.createdAt ? new Date(t.createdAt) : new Date(),
+        updatedAt: t?.updatedAt ? new Date(t.updatedAt) : new Date(),
+        assignee: t?.assignee || (() => {
+          const u = users.find((x: any) => x.id === t.assigneeId)
+          return u ? (u.name || u.email) : ''
+        })(),
+        assigneeAvatar: '/api/placeholder/32/32',
+        tags: Array.isArray(t.tags) ? t.tags : [],
+        attachments: Array.isArray(t.attachments) ? t.attachments : [],
+        subtasks: Array.isArray(t.subtasks) ? t.subtasks : [],
+        comments: Array.isArray(t.comments)
+          ? t.comments.map((c: any) => ({
+              id: c.id,
+              author: c.author || c.authorName || 'Користувач',
+              authorId: c.authorId || '',
+              authorAvatar: '/api/placeholder/32/32',
+              content: c.content || c.text || '',
+              timestamp: c.timestamp ? new Date(c.timestamp) : (c.createdAt ? new Date(c.createdAt) : new Date()),
+            }))
+          : [],
+      })) as Task[]
+      setTasks(normalized)
+    }
+  }, [workspace?.tasks])
 
   // Фільтрація задач
   useEffect(() => {
@@ -295,20 +343,22 @@ export default function AdvancedTaskManager({ workspaceId, currentUser, currentU
   const handleAddComment = () => {
     if (!newComment.trim() || !selectedTask) return
 
-    const comment: TaskComment = {
-      id: Date.now().toString(),
-      author: currentUser,
-      authorId: currentUserId,
-      authorAvatar: '/api/placeholder/32/32',
-      content: newComment,
-      timestamp: new Date()
-    }
-
+    // миттєво оновлюємо локальний стан
     setTasks(prev => prev.map(task =>
       task.id === selectedTask.id
-        ? { ...task, comments: [...task.comments, comment] }
+        ? { ...task, comments: [...(task.comments || []), {
+            id: Date.now().toString(),
+            author: currentUser,
+            authorId: currentUserId,
+            authorAvatar: '/api/placeholder/32/32',
+            content: newComment,
+            timestamp: new Date()
+          } as any] }
         : task
     ))
+
+    // зберігаємо в localStorage через DataProvider
+    addCommentToTask(selectedTask.id, newComment)
 
     setNewComment('')
   }
@@ -319,6 +369,7 @@ export default function AdvancedTaskManager({ workspaceId, currentUser, currentU
         ? { ...task, status: newStatus, updatedAt: new Date() }
         : task
     ))
+    updateTask(taskId, { status: newStatus })
   }
 
   const handleProgressUpdate = (taskId: string, progress: number) => {
@@ -327,6 +378,33 @@ export default function AdvancedTaskManager({ workspaceId, currentUser, currentU
         ? { ...task, progress, updatedAt: new Date() }
         : task
     ))
+  }
+
+  const handleCreateTask = async (data: { title: string; description: string; assignee: string; assigneeId: string; dueDate: Date; priority: Task['priority']; status: Task['status']; tags: string[] }) => {
+    const created = await addTask({
+      title: data.title,
+      description: data.description,
+      assigneeId: data.assigneeId,
+      dueDate: data.dueDate,
+      status: data.status,
+      priority: data.priority,
+    })
+    setTasks(prev => [...prev, {
+      ...(created as any),
+      assignee: data.assignee,
+      assigneeAvatar: '/api/placeholder/32/32',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      tags: data.tags,
+      comments: [],
+      attachments: [],
+      timeSpent: 0,
+      estimatedTime: 60,
+      progress: 0,
+      dependencies: [],
+      subtasks: [],
+      watchers: user ? [user.id] : [],
+    }])
   }
 
   return (
@@ -423,132 +501,261 @@ export default function AdvancedTaskManager({ workspaceId, currentUser, currentU
 
       {/* Список задач */}
       <div className="space-y-4">
-        {filteredTasks.map((task) => (
-          <div
-            key={task.id}
-            onClick={() => handleTaskClick(task)}
-            className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 cursor-pointer hover:shadow-md transition-shadow"
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center space-x-3 mb-2">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
-                    {task.title}
-                  </h3>
-                  <div className="flex items-center space-x-2">
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(task.status)}`}>
-                      {task.status === 'todo' && 'Очікує'}
-                      {task.status === 'in_progress' && 'В роботі'}
-                      {task.status === 'review' && 'Перевірка'}
-                      {task.status === 'done' && 'Завершено'}
-                      {task.status === 'blocked' && 'Заблоковано'}
-                    </span>
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(task.priority)}`}>
-                      {task.priority === 'low' && 'Низький'}
-                      {task.priority === 'medium' && 'Середній'}
-                      {task.priority === 'high' && 'Високий'}
-                      {task.priority === 'critical' && 'Критичний'}
-                    </span>
+        {filteredTasks.map((task) => {
+          const commentsCount = Array.isArray(task.comments) ? task.comments.length : 0
+          const attachmentsCount = Array.isArray(task.attachments) ? task.attachments.length : 0
+          const subtasks = Array.isArray(task.subtasks) ? task.subtasks : []
+          const tags = Array.isArray(task.tags) ? task.tags : []
+          return (
+            <div
+              key={task.id}
+              onClick={() => handleTaskClick(task)}
+              className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 cursor-pointer hover:shadow-md transition-shadow"
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center space-x-3 mb-2">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
+                      {task.title}
+                    </h3>
+                    <div className="flex items-center space-x-2">
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(task.status)}`}>
+                        {task.status === 'todo' && 'Очікує'}
+                        {task.status === 'in_progress' && 'В роботі'}
+                        {task.status === 'review' && 'Перевірка'}
+                        {task.status === 'done' && 'Завершено'}
+                        {task.status === 'blocked' && 'Заблоковано'}
+                      </span>
+                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(task.priority)}`}>
+                        {task.priority === 'low' && 'Низький'}
+                        {task.priority === 'medium' && 'Середній'}
+                        {task.priority === 'high' && 'Високий'}
+                        {task.priority === 'critical' && 'Критичний'}
+                      </span>
+                    </div>
                   </div>
-                </div>
-                
-                <p className="text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
-                  {task.description}
-                </p>
+                  
+                  <p className="text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
+                    {task.description}
+                  </p>
 
-                <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400 mb-3">
-                  <div className="flex items-center space-x-1">
-                    <User className="h-4 w-4" />
-                    <span>{task.assignee}</span>
+                  <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400 mb-3">
+                    <div className="flex items-center space-x-1">
+                      <User className="h-4 w-4" />
+                      <span>{task.assignee}</span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <Calendar className="h-4 w-4" />
+                      <span>До {task.dueDate.toLocaleDateString('uk-UA')}</span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <Clock className="h-4 w-4" />
+                      <span>{formatTime(task.timeSpent || 0)} / {formatTime(task.estimatedTime || 0)}</span>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <MessageSquare className="h-4 w-4" />
+                      <span>{commentsCount}</span>
+                    </div>
+                    {attachmentsCount > 0 && (
+                      <div className="flex items-center space-x-1 text-gray-400">
+                        <Paperclip className="h-4 w-4" />
+                        <span className="text-xs">{attachmentsCount}</span>
+                      </div>
+                    )}
                   </div>
-                  <div className="flex items-center space-x-1">
-                    <Calendar className="h-4 w-4" />
-                    <span>До {task.dueDate.toLocaleDateString('uk-UA')}</span>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <Clock className="h-4 w-4" />
-                    <span>{formatTime(task.timeSpent)} / {formatTime(task.estimatedTime)}</span>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <MessageSquare className="h-4 w-4" />
-                    <span>{task.comments.length}</span>
-                  </div>
-                </div>
 
-                {/* Прогрес */}
-                <div className="mb-3">
-                  <div className="flex items-center justify-between text-sm mb-1">
-                    <span className="text-gray-600 dark:text-gray-400">Прогрес</span>
-                    <span className="text-gray-900 dark:text-white font-medium">{task.progress}%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                    <div
-                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${task.progress}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Підзадачі */}
-                {task.subtasks.length > 0 && (
+                  {/* Прогрес */}
                   <div className="mb-3">
-                    <div className="flex items-center justify-between text-sm mb-2">
-                      <span className="text-gray-600 dark:text-gray-400">Підзадачі</span>
-                      <span className="text-gray-900 dark:text-white">
-                        {task.subtasks.filter(st => st.completed).length}/{task.subtasks.length}
-                      </span>
+                    <div className="flex items-center justify-between text-sm mb-1">
+                      <span className="text-gray-600 dark:text-gray-400">Прогрес</span>
+                      <span className="text-gray-900 dark:text-white font-medium">{(task.progress || 0)}%</span>
                     </div>
-                    <div className="space-y-1">
-                      {task.subtasks.slice(0, 3).map((subtask) => (
-                        <div key={subtask.id} className="flex items-center space-x-2">
-                          <CheckCircle className={`h-4 w-4 ${subtask.completed ? 'text-green-500' : 'text-gray-400'}`} />
-                          <span className={`text-sm ${subtask.completed ? 'line-through text-gray-500' : 'text-gray-700 dark:text-gray-300'}`}>
-                            {subtask.title}
-                          </span>
-                        </div>
-                      ))}
-                      {task.subtasks.length > 3 && (
-                        <span className="text-sm text-gray-500 dark:text-gray-400">
-                          +{task.subtasks.length - 3} ще
+                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                      <div
+                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${task.progress || 0}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Підзадачі */}
+                  {subtasks.length > 0 && (
+                    <div className="mb-3">
+                      <div className="flex items-center justify_between text-sm mb-2">
+                        <span className="text-gray-600 dark:text-gray-400">Підзадачі</span>
+                        <span className="text-gray-900 dark:text-white">
+                          {subtasks.filter(st => st.completed).length}/{subtasks.length}
                         </span>
-                      )}
+                      </div>
+                      <div className="space-y-1">
+                        {subtasks.slice(0, 3).map((subtask) => (
+                          <div key={subtask.id} className="flex items-center space-x-2">
+                            <CheckCircle className={`h-4 w-4 ${subtask.completed ? 'text-green-500' : 'text-gray-400'}`} />
+                            <span className={`text-sm ${subtask.completed ? 'line-through text-gray-500' : 'text-gray-700 dark:text-gray-300'}`}>
+                              {subtask.title}
+                            </span>
+                          </div>
+                        ))}
+                        {subtasks.length > 3 && (
+                          <span className="text-sm text-gray-500 dark:text-gray-400">
+                            +{subtasks.length - 3} ще
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {/* Теги */}
-                {task.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {task.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded-full"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
+                  {/* Теги */}
+                  {tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text_gray-600 dark:text-gray-400 text-xs rounded-full"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
-              <div className="flex items-center space-x-2 ml-4">
-                {task.attachments.length > 0 && (
-                  <div className="flex items-center space-x-1 text-gray-400">
-                    <Paperclip className="h-4 w-4" />
-                    <span className="text-xs">{task.attachments.length}</span>
-                  </div>
-                )}
-                <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
-                  <MoreHorizontal className="h-4 w-4 text-gray-400" />
-                </button>
+                <div className="flex items-center space-x-2 ml-4">
+                  {attachmentsCount > 0 && (
+                    <div className="flex items-center space-x-1 text-gray-400">
+                      <Paperclip className="h-4 w-4" />
+                      <span className="text-xs">{attachmentsCount}</span>
+                    </div>
+                  )}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      deleteTask(task.id)
+                      setTasks(prev => prev.filter(t => t.id !== task.id))
+                    }}
+                    className="p-1 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                    title="Видалити"
+                  >
+                    <Trash2 className="h-4 w-4 text-red-500" />
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
+      {/* Модаль створення задачі */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-lg w-full">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white">Нова задача</h2>
+              <button onClick={() => setShowCreateModal(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm text-gray-600 dark:text-gray-300 mb-1">Назва</label>
+                <input
+                  value={createForm.title}
+                  onChange={(e) => setCreateForm({ ...createForm, title: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  placeholder="Коротка назва задачі"
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 dark:text-gray-300 mb-1">Опис</label>
+                <textarea
+                  value={createForm.description}
+                  onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-gray-600 dark:text-gray-300 mb-1">Виконавець</label>
+                  <select
+                    value={createForm.assigneeId}
+                    onChange={(e) => {
+                      const selected = users.find((u: any) => u.id === e.target.value)
+                      setCreateForm({ ...createForm, assigneeId: e.target.value, assignee: selected ? (selected.name || selected.email) : '' })
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  >
+                    <option value="">— Обрати —</option>
+                    {users.map((u: any) => (
+                      <option key={u.id} value={u.id}>{u.name || u.email}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 dark:text-gray-300 mb-1">Дедлайн</label>
+                  <input
+                    type="date"
+                    value={createForm.dueDate.toISOString().split('T')[0]}
+                    onChange={(e) => setCreateForm({ ...createForm, dueDate: new Date(e.target.value) })}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm text-gray-600 dark:text-gray-300 mb-1">Статус</label>
+                  <select
+                    value={createForm.status}
+                    onChange={(e) => setCreateForm({ ...createForm, status: e.target.value as Task['status'] })}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  >
+                    <option value="todo">Очікує</option>
+                    <option value="in_progress">В роботі</option>
+                    <option value="review">Перевірка</option>
+                    <option value="done">Завершено</option>
+                    <option value="blocked">Заблоковано</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-600 dark:text-gray-300 mb-1">Пріоритет</label>
+                  <select
+                    value={createForm.priority}
+                    onChange={(e) => setCreateForm({ ...createForm, priority: e.target.value as Task['priority'] })}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  >
+                    <option value="low">Низький</option>
+                    <option value="medium">Середній</option>
+                    <option value="high">Високий</option>
+                    <option value="critical">Критичний</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div className="p-6 border-t border-gray-200 dark:border-gray-700 flex items-center justify-end space-x-3">
+              <button onClick={() => setShowCreateModal(false)} className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                Скасувати
+              </button>
+              <button
+                onClick={async () => {
+                  await handleCreateTask(createForm)
+                  setShowCreateModal(false)
+                  setCreateForm({ title: '', description: '', assigneeId: '', assignee: '', dueDate: new Date(Date.now() + 7*24*60*60*1000), priority: 'medium', status: 'todo', tags: [] })
+                }}
+                disabled={!createForm.title.trim() || !createForm.assigneeId}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg"
+              >
+                Створити
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Модаль перегляду задачі */}
-      {showTaskModal && selectedTask && (
+      {showTaskModal && selectedTask && (() => {
+        const sComments = Array.isArray(selectedTask.comments) ? selectedTask.comments : []
+        const sSubtasks = Array.isArray(selectedTask.subtasks) ? selectedTask.subtasks : []
+        return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-200 dark:border-gray-700">
@@ -604,7 +811,7 @@ export default function AdvancedTaskManager({ workspaceId, currentUser, currentU
                     <div className="flex justify-between">
                       <span className="text-gray-600 dark:text-gray-400">Час:</span>
                       <span className="text-gray-900 dark:text-white">
-                        {formatTime(selectedTask.timeSpent)} / {formatTime(selectedTask.estimatedTime)}
+                        {formatTime(selectedTask.timeSpent || 0)} / {formatTime(selectedTask.estimatedTime || 0)}
                       </span>
                     </div>
                   </div>
@@ -616,42 +823,42 @@ export default function AdvancedTaskManager({ workspaceId, currentUser, currentU
                     <div>
                       <div className="flex justify-between text-sm mb-1">
                         <span className="text-gray-600 dark:text-gray-400">Загальний прогрес</span>
-                        <span className="text-gray-900 dark:text-white">{selectedTask.progress}%</span>
+                        <span className="text-gray-900 dark:text-white">{(selectedTask.progress || 0)}%</span>
                       </div>
                       <input
                         type="range"
                         min="0"
                         max="100"
-                        value={selectedTask.progress}
+                        value={selectedTask.progress || 0}
                         onChange={(e) => handleProgressUpdate(selectedTask.id, parseInt(e.target.value))}
                         className="w-full"
                       />
                     </div>
-                    <div>
-                      <div className="flex justify-between text-sm mb-1">
-                        <span className="text-gray-600 dark:text-gray-400">Підзадачі</span>
-                        <span className="text-gray-900 dark:text-white">
-                          {selectedTask.subtasks.filter(st => st.completed).length}/{selectedTask.subtasks.length}
-                        </span>
+                    {sSubtasks.length > 0 && (
+                      <div>
+                        <div className="flex justify_between text-sm mb-1">
+                          <span className="text-gray-600 dark:text-gray-400">Підзадачі</span>
+                          <span className="text-gray-900 dark:text-white">
+                            {sSubtasks.filter(st => st.completed).length}/{sSubtasks.length}
+                          </span>
+                        </div>
+                        <div className="space-y-2">
+                          {sSubtasks.map((subtask) => (
+                            <div key={subtask.id} className="flex items-center space-x-2">
+                              <input
+                                type="checkbox"
+                                checked={subtask.completed}
+                                onChange={() => {}}
+                                className="rounded"
+                              />
+                              <span className={`text-sm ${subtask.completed ? 'line-through text-gray-500' : 'text-gray-700 dark:text-gray-300'}`}>
+                                {subtask.title}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                      <div className="space-y-2">
-                        {selectedTask.subtasks.map((subtask) => (
-                          <div key={subtask.id} className="flex items-center space-x-2">
-                            <input
-                              type="checkbox"
-                              checked={subtask.completed}
-                              onChange={() => {
-                                // Логіка оновлення підзадачі
-                              }}
-                              className="rounded"
-                            />
-                            <span className={`text-sm ${subtask.completed ? 'line-through text-gray-500' : 'text-gray-700 dark:text-gray-300'}`}>
-                              {subtask.title}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -659,10 +866,10 @@ export default function AdvancedTaskManager({ workspaceId, currentUser, currentU
               {/* Коментарі */}
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
-                  Коментарі ({selectedTask.comments.length})
+                  Коментарі ({sComments.length})
                 </h3>
                 <div className="space-y-4 mb-4">
-                  {selectedTask.comments.map((comment) => (
+                  {sComments.map((comment) => (
                     <div key={comment.id} className="flex space-x-3">
                       <img
                         src={comment.authorAvatar}
@@ -703,7 +910,7 @@ export default function AdvancedTaskManager({ workspaceId, currentUser, currentU
             </div>
           </div>
         </div>
-      )}
+        )})()}
     </div>
   )
 } 

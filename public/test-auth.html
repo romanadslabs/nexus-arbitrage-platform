@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест авторизації Nexus</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            margin: 20px 0;
+        }
+        .test-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 15px 0;
+        }
+        .test-account {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #4CAF50;
+        }
+        .admin-account {
+            border-left-color: #f44336;
+        }
+        .leader-account {
+            border-left-color: #2196F3;
+        }
+        .farmer-account {
+            border-left-color: #4CAF50;
+        }
+        .launcher-account {
+            border-left-color: #FF9800;
+        }
+        .viewer-account {
+            border-left-color: #9C27B0;
+        }
+        h1, h2, h3 {
+            color: white;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+        .status.success {
+            background: rgba(76, 175, 80, 0.3);
+            border: 1px solid #4CAF50;
+        }
+        .status.warning {
+            background: rgba(255, 152, 0, 0.3);
+            border: 1px solid #FF9800;
+        }
+        .status.error {
+            background: rgba(244, 67, 54, 0.3);
+            border: 1px solid #f44336;
+        }
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+        .feature-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .feature-list li:before {
+            content: "✅ ";
+            margin-right: 10px;
+        }
+        .link-button {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 8px;
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+        }
+        .link-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Тест системи авторизації Nexus</h1>
+        
+        <div class="test-section">
+            <h2>📋 Тестові акаунти</h2>
+            
+            <div class="test-account admin-account">
+                <h3>👑 Адміністратор</h3>
+                <p><strong>Email:</strong> admin@nexus.com</p>
+                <p><strong>Пароль:</strong> admin123</p>
+                <p><strong>Права:</strong> Повний доступ до всіх функцій</p>
+            </div>
+            
+            <div class="test-account leader-account">
+                <h3>👥 Лідер</h3>
+                <p><strong>Email:</strong> leader@nexus.com</p>
+                <p><strong>Пароль:</strong> leader123</p>
+                <p><strong>Права:</strong> Управління командою</p>
+            </div>
+            
+            <div class="test-account farmer-account">
+                <h3>🌾 Фармер</h3>
+                <p><strong>Email:</strong> farmer@nexus.com</p>
+                <p><strong>Пароль:</strong> farmer123</p>
+                <p><strong>Права:</strong> Робота з акаунтами</p>
+            </div>
+            
+            <div class="test-account launcher-account">
+                <h3>🚀 Лончер</h3>
+                <p><strong>Email:</strong> launcher@nexus.com</p>
+                <p><strong>Пароль:</strong> launcher123</p>
+                <p><strong>Права:</strong> Запуск кампаній</p>
+            </div>
+            
+            <div class="test-account viewer-account">
+                <h3>👁️ Переглядач</h3>
+                <p><strong>Email:</strong> viewer@nexus.com</p>
+                <p><strong>Пароль:</strong> viewer123</p>
+                <p><strong>Права:</strong> Тільки перегляд</p>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>🔗 Швидкі посилання</h2>
+            <a href="http://localhost:3000/login" class="link-button">📝 Сторінка входу</a>
+            <a href="http://localhost:3000/register" class="link-button">📋 Реєстрація</a>
+            <a href="http://localhost:3000/" class="link-button">🏠 Головна сторінка</a>
+            <a href="http://localhost:3000/admin/users" class="link-button">👥 Адмін панель</a>
+        </div>
+
+        <div class="test-section">
+            <h2>✅ Функції авторизації</h2>
+            <ul class="feature-list">
+                <li>Автоматичне перенаправлення на вхід для неавторизованих користувачів</li>
+                <li>Реєстрація нових користувачів з різними ролями</li>
+                <li>Підтвердження користувачів адміністратором</li>
+                <li>Блокування/розблокування користувачів</li>
+                <li>Управління ролями та правами доступу</li>
+                <li>Статистика користувачів в адмін панелі</li>
+                <li>Локальне зберігання даних користувачів</li>
+                <li>Захищені маршрути з перевіркою ролей</li>
+            </ul>
+        </div>
+
+        <div class="test-section">
+            <h2>🎯 Інструкції для тестування</h2>
+            
+            <div class="status success">
+                <h3>1. Тест перенаправлення</h3>
+                <p>Спробуйте зайти на головну сторінку без авторизації - вас має перенаправити на сторінку входу.</p>
+            </div>
+            
+            <div class="status warning">
+                <h3>2. Тест реєстрації</h3>
+                <p>Зареєструйте нового користувача і перевірте, чи з'являється він в адмін панелі зі статусом "Очікує".</p>
+            </div>
+            
+            <div class="status success">
+                <h3>3. Тест адмін панелі</h3>
+                <p>Увійдіть як адміністратор і перевірте функції управління користувачами.</p>
+            </div>
+            
+            <div class="status warning">
+                <h3>4. Тест ролей</h3>
+                <p>Спробуйте зайти в адмін панель з роллю, відмінною від адміністратора - доступ має бути заборонений.</p>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>📊 Статус системи</h2>
+            <div class="status success">
+                <strong>✅ Система авторизації готова до тестування!</strong>
+                <p>Всі основні функції реалізовані та працюють локально.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Перевірка доступності сервера
+        fetch('http://localhost:3000/api/test')
+            .then(response => {
+                if (response.ok) {
+                    console.log('✅ Сервер працює');
+                } else {
+                    console.log('⚠️ Сервер відповідає, але з помилкою');
+                }
+            })
+            .catch(error => {
+                console.log('❌ Сервер недоступний. Запустіть npm run dev');
+            });
+    </script>
+</body>
+</html> 

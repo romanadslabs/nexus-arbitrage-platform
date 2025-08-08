@@ -32,14 +32,23 @@ export interface StatusChangeEvent {
   changedAt: Date;
 }
 
+export interface TaskComment {
+  id: string;
+  authorId: string;
+  authorName: string;
+  content: string;
+  timestamp: Date;
+}
+
 export interface Task {
     id: string;
     title: string;
     description?: string;
-    status: 'todo' | 'in_progress' | 'done';
-    priority: 'low' | 'medium' | 'high';
+    status: 'todo' | 'in_progress' | 'review' | 'done' | 'blocked';
+    priority: 'low' | 'medium' | 'high' | 'critical';
     assigneeId?: string;
     dueDate?: Date;
+    comments?: TaskComment[];
 }
 
 export interface Activity {
@@ -122,17 +131,20 @@ export interface Account {
   aiEvaluation: string
   automations: string[]
   twoFactorCode?: string
+  backupCodes?: string[]
   cookieData?: string
   createdAt: Date
   updatedAt: Date
   isLocal?: boolean
+  createdBy?: string
+  createdByName?: string
 }
 
 export interface Card {
   id: string
   number: string
   type: 'visa' | 'mastercard' | 'amex'
-  status: 'active' | 'blocked' | 'expired' | 'testing'
+  status: 'active' | 'blocked' | 'expired' | 'testing' | 'assigned' | 'in_use'
   balance: number
   currency: string
   country: string
@@ -140,9 +152,14 @@ export interface Card {
   expiryDate: string
   cvv: string
   holderName: string
+  cost: number // Собівартість карти
+  assignedTo?: string // ID аккаунта, якому призначена карта
+  assignedBy?: string // ID користувача, який призначив карту
+  assignedAt?: Date
   createdAt: Date
   lastUsed?: Date
   notes?: string
+  tags?: string[]
 }
 
 export interface Proxy {
@@ -150,16 +167,21 @@ export interface Proxy {
   ip: string
   port: number
   type: 'http' | 'https' | 'socks4' | 'socks5'
-  status: 'active' | 'inactive' | 'testing' | 'blocked'
+  status: 'active' | 'inactive' | 'testing' | 'blocked' | 'assigned' | 'in_use'
   country: string
   city?: string
   speed: number
   uptime: number
   username?: string
   password?: string
+  cost: number // Собівартість проксі
+  assignedTo?: string // ID аккаунта, якому призначений проксі
+  assignedBy?: string // ID користувача, який призначив проксі
+  assignedAt?: Date
   createdAt: Date
   lastTested?: Date
   notes?: string
+  tags?: string[]
 }
 
 export interface Campaign {
@@ -212,7 +234,7 @@ interface DataContextType {
   }
   
   // Функції для акаунтів
-  createAccount: (accountData: Omit<Account, 'id' | 'createdAt' | 'updatedAt' | 'farmerId' | 'comments' | 'statusHistory'>) => Promise<void>
+  createAccount: (accountData: Omit<Account, 'id' | 'createdAt' | 'updatedAt' | 'farmerId' | 'comments' | 'statusHistory' | 'isLocal' | 'createdBy' | 'createdByName'>) => Promise<void>
   updateAccount: (id: string, updates: Partial<Account>) => Promise<void>
   deleteAccount: (id: string) => Promise<void>
   addCommentToAccount: (accountId: string, commentText: string) => Promise<void>
@@ -220,18 +242,19 @@ interface DataContextType {
 
   // Функції для робочого простору
   updateWorkspace: (updates: Partial<Workspace>) => Promise<void>
-  addTask: (taskData: Omit<Task, 'id'>) => Promise<void>
+  addTask: (taskData: Omit<Task, 'id'>) => Promise<Task>
   updateTask: (taskId: string, updates: Partial<Task>) => Promise<void>
   deleteTask: (taskId: string) => Promise<void>
   addTeamMember: (memberData: Omit<TeamMember, 'id'>) => Promise<void>
   removeTeamMember: (memberId: string) => Promise<void>
   logActivity: (text: string) => Promise<void>
-  addChatMessage: (messageData: { text: string; authorId: string; authorName: string; channelId: string }) => Promise<void>
+  addChatMessage: (messageData: { text: string; authorId: string; authorName: string; channelId: string; replyTo?: string }) => Promise<void>
   createChannel: (channelData: Omit<ChatChannel, 'id' | 'createdAt'>) => Promise<void>
   updateChannel: (channelId: string, updates: Partial<ChatChannel>) => Promise<void>
   deleteChannel: (channelId: string) => Promise<void>
   addReaction: (messageId: string, emoji: string, userId: string) => Promise<void>
   removeReaction: (messageId: string, emoji: string, userId: string) => Promise<void>
+  addCommentToTask: (taskId: string, content: string) => Promise<void>
 
   // Функції для кампаній
   createCampaign: (campaignData: Omit<Campaign, 'id' | 'createdAt' | 'updatedAt' | 'launcherId'>) => Promise<void>
@@ -281,227 +304,126 @@ const localStorageUtils = {
 }
 
 function seedMockData() {
-  const hasAccounts = localStorage.getItem(LOCAL_STORAGE_KEYS.ACCOUNTS);
-  if (!hasAccounts) {
-    const mockAccounts: Account[] = [
-      {
-        id: 'acc_1',
-        name: 'Alpha Facebook Account',
-        email: 'alpha@example.com',
-        phone: '123-456-7890',
-        platform: 'Facebook',
-        status: 'ready_for_farm',
-        statusHistory: [{ status: 'ready_for_farm', changedBy: 'System', changedAt: new Date() }],
-        trafficType: 'paid',
-        farmerId: 'farmer_1',
-        priority: 'High',
-        tags: ['USA', 'Tier 1'],
-        comments: [
-          { id: 'comment_1', text: 'Initial setup complete.', authorId: 'admin', authorName: 'Admin', createdAt: new Date() }
-        ],
-        aiEvaluation: 'Positive',
-        automations: ['auto-bidding'],
-        twoFactorCode: '1234567890123456',
-        cookieData: '{"name": "test-cookie", "value": "12345"}',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        isLocal: true,
-      },
-      {
-        id: 'acc_2',
-        name: 'Beta Google Ads Account',
-        email: 'beta@example.com',
-        phone: '234-567-8901',
-        platform: 'Google Ads',
-        status: 'in_progress',
-        statusHistory: [{ status: 'in_progress', changedBy: 'System', changedAt: new Date() }],
-        trafficType: 'organic',
-        farmerId: 'farmer_2',
-        priority: 'Medium',
-        tags: ['EU', 'Tier 2'],
-        comments: [],
-        aiEvaluation: 'Neutral',
-        automations: [],
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        isLocal: true,
-      },
-    ];
-    localStorageUtils.set(LOCAL_STORAGE_KEYS.ACCOUNTS, mockAccounts);
-    console.log('🌱 Mock accounts seeded');
-  }
+  // Перевіряємо, чи вже є дані
+  if (typeof window === 'undefined') return
 
-  const hasWorkspace = localStorage.getItem(LOCAL_STORAGE_KEYS.WORKSPACE);
-  if (!hasWorkspace) {
-    const mockWorkspace: Workspace = {
-            id: 'ws_main',
-            name: 'Головний робочий простір',
-            description: 'Єдиний робочий простір для всієї команди.',
-            ownerId: 'admin',
-            team: [{ id: 'user_1', name: 'Admin User', role: 'leader' }],
-            tasks: [
-                { id: 'task_1', title: 'Налаштувати першу кампанію', status: 'todo', priority: 'high', description: 'Детальний опис задачі тут.' },
-                { id: 'task_2', title: 'Запросити команду', status: 'todo', priority: 'medium' },
-                { id: 'task_3', title: 'Проаналізувати ринок', status: 'in_progress', priority: 'medium', assigneeId: 'user_1' },
-                { id: 'task_4', title: 'Зробити тестовий запуск', status: 'done', priority: 'low', assigneeId: 'user_1' },
-            ],
-            activity: [
-                { id: `act_${Date.now()}`, text: 'Створено робочий простір.', timestamp: new Date() }
-            ],
-            chat: [
-                {
-                    id: 'msg_1',
-                    text: 'Вітаю команду! Радий бачити вас у нашому робочому просторі.',
-                    authorId: 'user_1',
-                    authorName: 'Admin User',
-                    timestamp: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
-                    channelId: 'channel_work_moments',
-                },
-                {
-                    id: 'msg_2',
-                    text: 'Привіт! Готовий до роботи. Що потрібно зробити першим?',
-                    authorId: 'user_1',
-                    authorName: 'Admin User',
-                    timestamp: new Date(Date.now() - 1800000).toISOString(), // 30 minutes ago
-                    channelId: 'channel_work_moments',
-                },
-                {
-                    id: 'msg_3',
-                    text: 'Давайте почнемо з налаштування першої кампанії. Хто хоче взятися за це?',
-                    authorId: 'user_1',
-                    authorName: 'Admin User',
-                    timestamp: new Date(Date.now() - 900000).toISOString(), // 15 minutes ago
-                    channelId: 'channel_google_ads',
-                },
-                {
-                    id: 'msg_4',
-                    text: 'Потрібно перевірити всі Google аккаунти на предмет блокувань',
-                    authorId: 'user_1',
-                    authorName: 'Admin User',
-                    timestamp: new Date(Date.now() - 600000).toISOString(), // 10 minutes ago
-                    channelId: 'channel_google_ads',
-                },
-                {
-                    id: 'msg_5',
-                    text: 'Ідея: додати автоматичне тестування проксі перед використанням',
-                    authorId: 'user_1',
-                    authorName: 'Admin User',
-                    timestamp: new Date(Date.now() - 300000).toISOString(), // 5 minutes ago
-                    channelId: 'channel_improvements',
-                }
-            ],
-            channels: [
-                {
-                    id: 'channel_google_ads',
-                    name: '🔍 Робота з Google аккаунтами',
-                    description: 'Робота з Google аккаунтами та запуск реклами',
-                    type: 'work',
-                    members: ['user_1'],
-                    isActive: true,
-                    createdAt: new Date(),
-                },
-                {
-                    id: 'channel_work_moments',
-                    name: '💼 Робочі моменти',
-                    description: 'Обговорення робочих питань та координація',
-                    type: 'work',
-                    members: ['user_1'],
-                    isActive: true,
-                    createdAt: new Date(),
-                },
-                {
-                    id: 'channel_improvements',
-                    name: '🚀 Покращення сайту',
-                    description: 'Обговорення покращень та нових функцій',
-                    type: 'work',
-                    members: ['user_1'],
-                    isActive: true,
-                    createdAt: new Date(),
-                },
-            ],
-            createdAt: new Date(),
-        };
-    localStorageUtils.set(LOCAL_STORAGE_KEYS.WORKSPACE, mockWorkspace);
-    console.log('🌱 Mock workspace seeded');
-  }
+  const existingCards = localStorage.getItem(LOCAL_STORAGE_KEYS.CARDS)
+  const existingProxies = localStorage.getItem(LOCAL_STORAGE_KEYS.PROXIES)
 
-  const hasCampaigns = localStorage.getItem(LOCAL_STORAGE_KEYS.CAMPAIGNS);
-  if (!hasCampaigns) {
-    const mockCampaigns: Campaign[] = [
-      {
-        id: 'camp_1',
-        name: 'Summer Sale Campaign',
-        platform: 'Facebook',
-        status: 'active',
-        budget: 5000,
-        spent: 2345,
-        accountId: 'acc_1',
-        launcherId: 'launcher_1',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      },
-    ];
-    localStorageUtils.set(LOCAL_STORAGE_KEYS.CAMPAIGNS, mockCampaigns);
-    console.log('🌱 Mock campaigns seeded');
-  }
-
-  const hasExpenses = localStorage.getItem(LOCAL_STORAGE_KEYS.EXPENSES);
-  if (!hasExpenses) {
-    const mockExpenses: Expense[] = [
-      {
-        id: 'exp_1',
-        name: 'Proxy Services',
-        description: 'Monthly subscription',
-        amount: 150,
-        date: new Date(),
-        accountId: 'acc_1',
-        createdAt: new Date(),
-      },
-    ];
-    localStorageUtils.set(LOCAL_STORAGE_KEYS.EXPENSES, mockExpenses);
-    console.log('🌱 Mock expenses seeded');
-  }
-
-  const hasCards = localStorage.getItem(LOCAL_STORAGE_KEYS.CARDS);
-  if (!hasCards) {
+  // Створюємо тестові карти
+  if (!existingCards) {
     const mockCards: Card[] = [
       {
         id: 'card_1',
-        number: '1234567890123456',
+        number: '4111111111111111',
         type: 'visa',
         status: 'active',
-        balance: 1500,
+        balance: 1000,
         currency: 'USD',
         country: 'USA',
-        bank: 'Chase',
+        bank: 'Chase Bank',
         expiryDate: '12/25',
         cvv: '123',
-        holderName: 'John Doe',
+        holderName: 'John Smith',
+        cost: 50,
         createdAt: new Date(),
+        tags: ['premium', 'verified']
       },
-    ];
-    localStorageUtils.set(LOCAL_STORAGE_KEYS.CARDS, mockCards);
-    console.log('🌱 Mock cards seeded');
+      {
+        id: 'card_2',
+        number: '5555555555554444',
+        type: 'mastercard',
+        status: 'active',
+        balance: 2500,
+        currency: 'USD',
+        country: 'Canada',
+        bank: 'Royal Bank',
+        expiryDate: '06/26',
+        cvv: '456',
+        holderName: 'Jane Doe',
+        cost: 75,
+        createdAt: new Date(),
+        tags: ['business']
+      },
+      {
+        id: 'card_3',
+        number: '378282246310005',
+        type: 'amex',
+        status: 'assigned',
+        balance: 5000,
+        currency: 'USD',
+        country: 'USA',
+        bank: 'American Express',
+        expiryDate: '09/27',
+        cvv: '789',
+        holderName: 'Mike Johnson',
+        cost: 100,
+        assignedTo: 'account_1',
+        assignedBy: 'user_1',
+        assignedAt: new Date(),
+        createdAt: new Date(),
+        tags: ['platinum']
+      }
+    ]
+    localStorage.setItem(LOCAL_STORAGE_KEYS.CARDS, JSON.stringify(mockCards))
   }
 
-  const hasProxies = localStorage.getItem(LOCAL_STORAGE_KEYS.PROXIES);
-  if (!hasProxies) {
+  // Створюємо тестові проксі
+  if (!existingProxies) {
     const mockProxies: Proxy[] = [
       {
         id: 'proxy_1',
-        ip: '127.0.0.1',
+        ip: '192.168.1.100',
         port: 8080,
         type: 'http',
         status: 'active',
         country: 'USA',
         city: 'New York',
-        speed: 120,
+        speed: 100,
         uptime: 99,
+        username: 'user1',
+        password: 'pass1',
+        cost: 10,
         createdAt: new Date(),
+        tags: ['fast', 'reliable']
       },
-    ];
-    localStorageUtils.set(LOCAL_STORAGE_KEYS.PROXIES, mockProxies);
-    console.log('🌱 Mock proxies seeded');
+      {
+        id: 'proxy_2',
+        ip: '10.0.0.50',
+        port: 3128,
+        type: 'https',
+        status: 'active',
+        country: 'Germany',
+        city: 'Berlin',
+        speed: 150,
+        uptime: 98,
+        username: 'user2',
+        password: 'pass2',
+        cost: 15,
+        createdAt: new Date(),
+        tags: ['secure']
+      },
+      {
+        id: 'proxy_3',
+        ip: '172.16.0.25',
+        port: 1080,
+        type: 'socks5',
+        status: 'assigned',
+        country: 'Netherlands',
+        city: 'Amsterdam',
+        speed: 200,
+        uptime: 99,
+        username: 'user3',
+        password: 'pass3',
+        cost: 20,
+        assignedTo: 'account_2',
+        assignedBy: 'user_1',
+        assignedAt: new Date(),
+        createdAt: new Date(),
+        tags: ['premium', 'anonymous']
+      }
+    ]
+    localStorage.setItem(LOCAL_STORAGE_KEYS.PROXIES, JSON.stringify(mockProxies))
   }
 }
 
@@ -550,16 +472,40 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     const allExpenses = localStorageUtils.get<Expense[]>(LOCAL_STORAGE_KEYS.EXPENSES, [])
     const allCards = localStorageUtils.get<Card[]>(LOCAL_STORAGE_KEYS.CARDS, [])
     const allProxies = localStorageUtils.get<Proxy[]>(LOCAL_STORAGE_KEYS.PROXIES, [])
-    const singleWorkspace = localStorageUtils.get<Workspace | null>(LOCAL_STORAGE_KEYS.WORKSPACE, null)
+    let singleWorkspace = localStorageUtils.get<Workspace | null>(LOCAL_STORAGE_KEYS.WORKSPACE, null)
+
+    // Створюємо робочий простір за замовчуванням, якщо відсутній
+    if (!singleWorkspace && user) {
+      singleWorkspace = {
+        id: 'ws-1',
+        name: 'Default Workspace',
+        description: 'Автоматично створений простір',
+        ownerId: user.id,
+        team: [],
+        tasks: [],
+        activity: [],
+        chat: [],
+        channels: [],
+        createdAt: new Date(),
+      }
+      localStorageUtils.set(LOCAL_STORAGE_KEYS.WORKSPACE, singleWorkspace)
+    }
     
     // Validate and fix workspace data if needed
     const validatedWorkspace = singleWorkspace ? {
       ...singleWorkspace,
       team: Array.isArray(singleWorkspace.team) ? singleWorkspace.team : [],
-      tasks: Array.isArray(singleWorkspace.tasks) ? singleWorkspace.tasks : [],
-      activity: Array.isArray(singleWorkspace.activity) ? singleWorkspace.activity : [],
+      tasks: Array.isArray(singleWorkspace.tasks) ? singleWorkspace.tasks.map((t: any) => ({
+        ...t,
+        dueDate: t?.dueDate ? new Date(t.dueDate) : undefined,
+      })) : [],
+      activity: Array.isArray(singleWorkspace.activity) ? singleWorkspace.activity.map((a: any) => ({...a, timestamp: new Date(a.timestamp)})) : [],
       chat: Array.isArray(singleWorkspace.chat) ? singleWorkspace.chat : [],
-      channels: Array.isArray(singleWorkspace.channels) ? singleWorkspace.channels : [],
+      channels: Array.isArray(singleWorkspace.channels) ? singleWorkspace.channels.map((c: any) => ({
+        ...c,
+        createdAt: c?.createdAt ? new Date(c.createdAt) : undefined,
+        lastMessageAt: c?.lastMessageAt ? new Date(c.lastMessageAt) : undefined,
+      })) : [],
     } : null
     
     // Фільтрація даних відповідно до ролі користувача
@@ -590,7 +536,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
   }
 
   // --- Управління акаунтами ---
-  const createAccount = async (accountData: Omit<Account, 'id' | 'createdAt' | 'updatedAt' | 'farmerId' | 'comments' | 'statusHistory'>) => {
+  const createAccount = async (accountData: Omit<Account, 'id' | 'createdAt' | 'updatedAt' | 'farmerId' | 'comments' | 'statusHistory' | 'isLocal' | 'createdBy' | 'createdByName'>) => {
     if (!user) return
     const allAccounts = localStorageUtils.get<Account[]>(LOCAL_STORAGE_KEYS.ACCOUNTS, [])
     const newAccount: Account = {
@@ -602,6 +548,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       createdAt: new Date(),
       updatedAt: new Date(),
       isLocal: true,
+      createdBy: user.id,
+      createdByName: user.name || user.email,
     }
     const updatedAccounts = [...allAccounts, newAccount]
     localStorageUtils.set(LOCAL_STORAGE_KEYS.ACCOUNTS, updatedAccounts)
@@ -701,15 +649,35 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       }
   }
   
-  const addTask = async (taskData: Omit<Task, 'id'>) => {
+  const addTask = async (taskData: Omit<Task, 'id'>): Promise<Task> => {
       const currentWorkspace = localStorageUtils.get<Workspace | null>(LOCAL_STORAGE_KEYS.WORKSPACE, null);
       if (currentWorkspace) {
-          const newTask: Task = { ...taskData, id: `task_${Date.now()}` };
+          const newTask: Task = { ...taskData, id: `task_${Date.now()}`, comments: [] };
           const updatedWorkspace = { ...currentWorkspace, tasks: [...currentWorkspace.tasks, newTask] };
           localStorageUtils.set(LOCAL_STORAGE_KEYS.WORKSPACE, updatedWorkspace);
           setWorkspace(updatedWorkspace);
           logActivity(`створив(ла) нову задачу: "${newTask.title}"`);
+          return newTask;
       }
+      // Якщо робочого простору ще немає, створимо його і додамо задачу
+      const newWorkspace: Workspace = {
+        id: 'ws-1',
+        name: 'Default Workspace',
+        description: 'Автоматично створений простір',
+        ownerId: user?.id || 'unknown',
+        team: [],
+        tasks: [],
+        activity: [],
+        chat: [],
+        channels: [],
+        createdAt: new Date(),
+      }
+      const newTask: Task = { ...taskData, id: `task_${Date.now()}`, comments: [] };
+      newWorkspace.tasks = [newTask];
+      localStorageUtils.set(LOCAL_STORAGE_KEYS.WORKSPACE, newWorkspace);
+      setWorkspace(newWorkspace);
+      logActivity(`створив(ла) нову задачу: "${newTask.title}"`);
+      return newTask;
   }
 
   const updateTask = async (taskId: string, updates: Partial<Task>) => {
@@ -725,6 +693,29 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
               logActivity(`змінив(ла) статус задачі "${task?.title}" на "${updates.status}"`);
           }
       }
+  }
+
+  const addCommentToTask = async (taskId: string, content: string) => {
+    const currentWorkspace = localStorageUtils.get<Workspace | null>(LOCAL_STORAGE_KEYS.WORKSPACE, null)
+    if (!currentWorkspace || !user) return
+
+    const newComment: TaskComment = {
+      id: `tcomment_${Date.now()}`,
+      authorId: user.id,
+      authorName: user.name || user.email,
+      content,
+      timestamp: new Date(),
+    }
+
+    const updatedTasks = (currentWorkspace.tasks || []).map((t: any) =>
+      t.id === taskId
+        ? { ...t, comments: Array.isArray(t.comments) ? [...t.comments, newComment] : [newComment] }
+        : t
+    )
+
+    const updatedWorkspace = { ...currentWorkspace, tasks: updatedTasks }
+    localStorageUtils.set(LOCAL_STORAGE_KEYS.WORKSPACE, updatedWorkspace)
+    setWorkspace(updatedWorkspace)
   }
 
   const deleteTask = async (taskId: string) => {
@@ -766,7 +757,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       }
   }
 
-  const addChatMessage = async (messageData: { text: string; authorId: string; authorName: string; channelId: string }) => {
+  const addChatMessage = async (messageData: { text: string; authorId: string; authorName: string; channelId: string; replyTo?: string }) => {
     if (!workspace) return
     
     const newMessage: ChatMessage = {
@@ -775,7 +766,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       authorId: messageData.authorId,
       authorName: messageData.authorName,
       timestamp: new Date().toISOString(),
-      channelId: messageData.channelId
+      channelId: messageData.channelId,
+      replyTo: messageData.replyTo,
     }
     
     // Ensure chat is an array, fallback to empty array if not
@@ -788,7 +780,8 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     }
     
     // Update channel's lastMessageAt
-    const updatedChannels = workspace.channels.map(channel => 
+    const currentChannels = Array.isArray(workspace.channels) ? workspace.channels : []
+    const updatedChannels = currentChannels.map(channel => 
       channel.id === messageData.channelId 
         ? { ...channel, lastMessageAt: new Date() }
         : channel
@@ -1043,6 +1036,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     deleteChannel,
     addReaction,
     removeReaction,
+    addCommentToTask,
     createCampaign,
     updateCampaign,
     deleteCampaign,

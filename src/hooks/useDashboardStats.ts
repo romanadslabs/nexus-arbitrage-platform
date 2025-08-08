@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useMemo } from 'react';
+import { useData } from '@/components/providers/DataProvider';
 
-// Спрощений інтерфейс для статистики дашборду
 export interface DashboardStats {
   totalAccounts: number;
   activeAccounts: number;
@@ -13,34 +13,38 @@ export interface DashboardStats {
 }
 
 export const useDashboardStats = () => {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { accounts, campaigns, expenses } = useData();
 
-  const fetchStats = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await fetch('/api/analytics/dashboard-stats');
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-      const data = await response.json();
-      if (data.success) {
-        setStats(data.stats);
-      } else {
-        throw new Error(data.error || 'Failed to fetch stats');
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An unknown error occurred');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const stats: DashboardStats = useMemo(() => {
+    const totalAccounts = accounts.length;
+    const activeAccounts = accounts.filter(acc => (acc as any).status === 'ready_for_ads').length;
+    const totalCampaigns = campaigns.length;
+    const activeCampaigns = campaigns.filter(c => (c as any).status === 'active').length;
+    const totalExpenses = expenses.reduce((sum, exp: any) => sum + (exp.amount || exp.cost || 0), 0);
 
-  useEffect(() => {
-    fetchStats();
-  }, [fetchStats]);
+    const platformBreakdown = accounts.reduce((acc: Record<string, number>, a: any) => {
+      acc[a.platform] = (acc[a.platform] || 0) + 1;
+      return acc;
+    }, {});
 
-  return { stats, isLoading, error, refetch: fetchStats };
-}; 
+    const statusBreakdown = accounts.reduce((acc: Record<string, number>, a: any) => {
+      acc[a.status] = (acc[a.status] || 0) + 1;
+      return acc;
+    }, {});
+
+    const efficiency = totalAccounts > 0 ? (activeAccounts / totalAccounts) * 100 : 0;
+
+    return {
+      totalAccounts,
+      activeAccounts,
+      totalCampaigns,
+      activeCampaigns,
+      totalExpenses,
+      platformBreakdown,
+      statusBreakdown,
+      efficiency,
+    };
+  }, [accounts, campaigns, expenses]);
+
+  return { stats, isLoading: false, error: null, refetch: async () => {} };
+} 

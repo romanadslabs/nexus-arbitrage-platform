@@ -1,3 +1,11 @@
+export interface OfferComment {
+  id: string
+  authorId: string
+  authorName: string
+  text: string
+  createdAt: Date
+}
+
 export interface Offer {
   id: string
   name: string
@@ -25,6 +33,7 @@ export interface Offer {
   maxLinks?: number // Максимальна кількість посилань
   activeUsers?: number // Кількість активних користувачів
   totalUsers?: number // Загальна кількість користувачів
+  comments?: OfferComment[]
 }
 
 export interface OfferLink {

@@ -21,6 +21,8 @@ import {
   DollarSign,
   Zap
 } from 'lucide-react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 interface TeamMember {
   id: string
@@ -29,8 +31,16 @@ interface TeamMember {
   status: 'online' | 'offline' | 'busy'
   performance: number
   tasksCompleted: number
-  lastActivity: Date
+  lastActivity?: Date | string
   isActive: boolean
+}
+
+// Безпечне форматування часу останньої активності
+const formatLastActivityTime = (value?: Date | string) => {
+  if (!value) return '-'
+  const date = value instanceof Date ? value : new Date(value)
+  if (isNaN(date.getTime())) return '-'
+  return date.toLocaleTimeString('uk-UA')
 }
 
 interface TeamMetric {
@@ -56,6 +66,7 @@ export default function TeamLeaderDashboard({
   metrics 
 }: TeamLeaderDashboardProps) {
   const [activeTab, setActiveTab] = useState<'overview' | 'performance' | 'tasks' | 'reports'>('overview')
+  const router = useRouter()
 
   const getPerformanceColor = (performance: number) => {
     if (performance >= 90) return 'text-green-600 dark:text-green-400'
@@ -96,7 +107,10 @@ export default function TeamLeaderDashboard({
             </p>
           </div>
           <div className="flex items-center space-x-2">
-            <button className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors">
+            <button
+              onClick={() => router.push('/reports')}
+              className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors"
+            >
               <Plus className="h-4 w-4 mr-1 inline" />
               Новий звіт
             </button>
@@ -187,6 +201,13 @@ export default function TeamLeaderDashboard({
               </div>
             </div>
 
+            {/* Quick Links */}
+            <div className="flex gap-2">
+              <Link href="/workspace/tasks" className="px-3 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700">До задач</Link>
+              <Link href="/workspace/chat" className="px-3 py-2 text-sm rounded-lg bg-emerald-600 text-white hover:bg-emerald-700">До чату</Link>
+              <Link href="/reports" className="px-3 py-2 text-sm rounded-lg bg-purple-600 text-white hover:bg-purple-700">До звітів</Link>
+            </div>
+
             {/* Team Members Overview */}
             <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
@@ -194,7 +215,7 @@ export default function TeamLeaderDashboard({
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {teamMembers.map((member) => (
-                  <div key={member.id} className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
+                  <div key={member.id} className="bg-white dark:bg_gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-600">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center space-x-3">
                         <div className="relative">
@@ -237,7 +258,7 @@ export default function TeamLeaderDashboard({
                       <div className="flex items-center justify-between text-sm">
                         <span className="text-gray-500 dark:text-gray-400">Остання активність:</span>
                         <span className="text-gray-500 dark:text-gray-400">
-                          {member.lastActivity.toLocaleTimeString('uk-UA')}
+                          {formatLastActivityTime(member.lastActivity)}
                         </span>
                       </div>
                     </div>
@@ -262,191 +283,29 @@ export default function TeamLeaderDashboard({
               </p>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                  Топ виконавці
-                </h3>
-                <div className="space-y-3">
-                  {teamMembers
-                    .sort((a, b) => b.performance - a.performance)
-                    .slice(0, 5)
-                    .map((member, index) => (
-                      <div key={member.id} className="flex items-center justify-between bg-white dark:bg-gray-800 rounded-lg p-3">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-yellow-100 dark:bg-yellow-900/20 rounded-full flex items-center justify-center">
-                            <Star className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-gray-900 dark:text-white">{member.name}</p>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                              {member.role === 'teamlead' ? 'Тімлід' : 
-                               member.role === 'farmer' ? 'Фармер' : 
-                               member.role === 'launcher' ? 'Лончер' : 'Адмін'}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className={`font-bold ${getPerformanceColor(member.performance)}`}>
-                            {member.performance}%
-                          </p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                            {member.tasksCompleted} задач
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              </div>
-
-              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                  Потребують уваги
-                </h3>
-                <div className="space-y-3">
-                  {teamMembers
-                    .filter(member => member.performance < 70)
-                    .map((member) => (
-                      <div key={member.id} className="flex items-center justify-between bg-white dark:bg-gray-800 rounded-lg p-3 border-l-4 border-red-500">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
-                            <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-gray-900 dark:text-white">{member.name}</p>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                              Низька продуктивність
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-bold text-red-600 dark:text-red-400">
-                            {member.performance}%
-                          </p>
-                          <button className="text-sm text-blue-600 dark:text-blue-400 hover:underline">
-                            Допомогти
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              </div>
+            {/* Кнопки переходу */}
+            <div className="flex gap-2">
+              <Link href="/reports" className="px-3 py-2 text-sm rounded-lg bg-purple-600 text-white hover:bg-purple-700">Звіти по продуктивності</Link>
+              <Link href="/reports" className="px-3 py-2 text-sm rounded-lg bg-indigo-600 text-white hover:bg-indigo-700">Звіти за період</Link>
             </div>
           </div>
         )}
 
         {activeTab === 'tasks' && (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-blue-600 dark:text-blue-400">В роботі</p>
-                    <p className="text-2xl font-bold text-blue-900 dark:text-blue-100">
-                      {metrics.pendingTasks}
-                    </p>
-                  </div>
-                  <Clock className="h-8 w-8 text-blue-600 dark:text-blue-400" />
-                </div>
-              </div>
-
-              <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-green-600 dark:text-green-400">Завершено</p>
-                    <p className="text-2xl font-bold text-green-900 dark:text-green-100">
-                      {metrics.completedTasks}
-                    </p>
-                  </div>
-                  <CheckCircle className="h-8 w-8 text-green-600 dark:text-green-400" />
-                </div>
-              </div>
-
-              <div className="bg-red-50 dark:bg-red-900/20 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-red-600 dark:text-red-400">Протерміновано</p>
-                    <p className="text-2xl font-bold text-red-900 dark:text-red-100">
-                      {metrics.overdueTasks}
-                    </p>
-                  </div>
-                  <AlertTriangle className="h-8 w-8 text-red-600 dark:text-red-400" />
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Швидкі дії
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <button className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                  <Plus className="h-6 w-6 text-blue-600 dark:text-blue-400 mx-auto mb-2" />
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">Нова задача</p>
-                </button>
-                <button className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                  <Users className="h-6 w-6 text-green-600 dark:text-green-400 mx-auto mb-2" />
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">Призначити</p>
-                </button>
-                <button className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                  <BarChart3 className="h-6 w-6 text-purple-600 dark:text-purple-400 mx-auto mb-2" />
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">Аналітика</p>
-                </button>
-                <button className="p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                  <MessageSquare className="h-6 w-6 text-orange-600 dark:text-orange-400 mx-auto mb-2" />
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">Повідомити</p>
-                </button>
-              </div>
+            <div className="flex gap-2">
+              <Link href="/workspace/tasks" className="px-3 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700">Відкрити задачі</Link>
+              <Link href="/workspace/chat" className="px-3 py-2 text-sm rounded-lg bg-emerald-600 text-white hover:bg-emerald-700">Відкрити чат</Link>
             </div>
           </div>
         )}
 
         {activeTab === 'reports' && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                  Тижневі звіти
-                </h3>
-                <div className="space-y-3">
-                  {[1, 2, 3, 4].map((week) => (
-                    <div key={week} className="flex items-center justify-between bg-white dark:bg-gray-800 rounded-lg p-3">
-                      <div>
-                        <p className="font-medium text-gray-900 dark:text-white">
-                          Тиждень {week} - {new Date(Date.now() - week * 7 * 24 * 60 * 60 * 1000).toLocaleDateString('uk-UA')}
-                        </p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          Продуктивність: {85 + Math.random() * 15 | 0}%
-                        </p>
-                      </div>
-                      <button className="text-blue-600 dark:text-blue-400 hover:underline text-sm">
-                        Переглянути
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                  Швидкі звіти
-                </h3>
-                <div className="space-y-3">
-                  <button className="w-full p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left">
-                    <p className="font-medium text-gray-900 dark:text-white">Продуктивність команди</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Детальний аналіз за сьогодні</p>
-                  </button>
-                  <button className="w-full p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left">
-                    <p className="font-medium text-gray-900 dark:text-white">Статус проектів</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Огляд всіх активних проектів</p>
-                  </button>
-                  <button className="w-full p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left">
-                    <p className="font-medium text-gray-900 dark:text-white">Фінансовий звіт</p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Дохід та витрати за місяць</p>
-                  </button>
-                </div>
-              </div>
-            </div>
+          <div className="space-y-4">
+            <Link href="/reports" className="block p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+              <p className="font-medium text-gray-900 dark:text-white">Відкрити Звіти</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Перейти до Performance/Period/Unified</p>
+            </Link>
           </div>
         )}
       </div>

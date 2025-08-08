@@ -2,8 +2,9 @@ export interface User {
   id: string
   email: string
   name: string
-  role: 'farmer' | 'launcher' | 'leader'
-  avatar?: string
+  role: 'admin' | 'leader' | 'farmer' | 'launcher' | 'viewer'
+  avatar?: string;
+  status: 'active' | 'pending' | 'suspended';
   
   // Розширені дані профілю
   telegramUsername?: string
@@ -203,13 +204,26 @@ export interface Task {
   id: string
   title: string
   description: string
-  assigneeId: string
-  deadline: Date
-  status: 'todo' | 'in-progress' | 'done'
+  assigneeId?: string
+  dueDate?: Date;
+  status: 'todo' | 'in-progress' | 'done' | 'cancelled';
   priority: 'low' | 'medium' | 'high'
   sprint?: string
   createdAt: Date
   updatedAt: Date
+  comments?: {
+    id: string;
+    authorId: string;
+    content: string;
+    createdAt: Date;
+  }[];
+  subtasks?: {
+    id: string;
+    title: string;
+    completed: boolean;
+  }[];
+  project?: string;
+  tags?: string[];
 }
 
 export interface Analytics {
@@ -342,8 +356,8 @@ export interface AirtableTeamMember {
   createdAt: string
 }
 
-export type UserRole = 'farmer' | 'launcher' | 'leader'
-export type TaskStatus = 'todo' | 'in-progress' | 'done'
+export type UserRole = 'admin' | 'leader' | 'farmer' | 'launcher' | 'viewer'
+export type TaskStatus = 'todo' | 'in-progress' | 'done' | 'cancelled'
 export type TaskPriority = 'low' | 'medium' | 'high'
 export type AccountStatus = 'active' | 'banned' | 'moderation' | 'pending'
 export type OfferStatus = 'active' | 'paused' | 'expired' | 'draft'
@@ -576,6 +590,7 @@ export interface TeamMember {
   permissions: TeamPermission[]
   joinedAt: Date
   isActive: boolean
+  status: 'online' | 'offline' | 'away';
   performance: MemberPerformance
 }
 
@@ -693,3 +708,54 @@ export interface Meeting {
   notes?: string
   createdAt: Date
 } 
+
+export interface Card {
+  id: string
+  number: string
+  type: 'visa' | 'mastercard' | 'amex'
+  status: 'active' | 'blocked' | 'expired' | 'testing' | 'assigned' | 'in_use'
+  balance: number
+  currency: string
+  country: string
+  bank: string
+  expiryDate: string
+  cvv: string
+  holderName: string
+  cost: number // Собівартість карти
+  assignedTo?: string // ID аккаунта, якому призначена карта
+  assignedBy?: string // ID користувача, який призначив карту
+  assignedAt?: Date
+  createdAt: Date
+  lastUsed?: Date
+  notes?: string
+  tags?: string[]
+}
+
+export interface Proxy {
+  id: string
+  ip: string
+  port: number
+  type: 'http' | 'https' | 'socks4' | 'socks5'
+  status: 'active' | 'inactive' | 'testing' | 'blocked' | 'assigned' | 'in_use'
+  country: string
+  city?: string
+  speed: number
+  uptime: number
+  username?: string
+  password?: string
+  cost: number // Собівартість проксі
+  assignedTo?: string // ID аккаунта, якому призначений проксі
+  assignedBy?: string // ID користувача, який призначив проксі
+  assignedAt?: Date
+  createdAt: Date
+  lastTested?: Date
+  notes?: string
+  tags?: string[]
+} 
+
+export type Metric = {
+  name: string;
+  value: string;
+  change: string;
+  changeType: 'increase' | 'decrease';
+}; 

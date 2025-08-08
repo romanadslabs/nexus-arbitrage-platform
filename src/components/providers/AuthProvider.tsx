@@ -40,6 +40,9 @@ interface AuthContextType {
   logout: () => void
   checkAuth: () => void
   approveUser: (userId: string) => Promise<{ success: boolean }>
+  suspendUser: (userId: string) => Promise<{ success: boolean }>
+  activateUser: (userId: string) => Promise<{ success: boolean }>
+  deleteUser: (userId: string) => Promise<{ success: boolean }>
   getAllUsers: () => User[]
 }
 
@@ -53,6 +56,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Ініціалізація тільки на клієнті
   useEffect(() => {
+    // Перевіряємо, чи ми на клієнті
+    if (typeof window === 'undefined') {
+      setIsLoading(false)
+      return
+    }
+
     const getInitialUsers = (): User[] => {
       try {
         const storedUsers = localStorage.getItem(USERS_STORAGE_KEY)
@@ -86,11 +95,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     setUsers(getInitialUsers())
-    checkAuth()
   }, [])
+
+  // Окремий ефект для перевірки автентифікації, який спрацьовує після ініціалізації users
+  useEffect(() => {
+    if (users.length > 0) {
+      checkAuth()
+    }
+  }, [users])
 
   const saveUsers = (updatedUsers: User[]) => {
     setUsers(updatedUsers)
+    
+    // Перевіряємо, чи ми на клієнті
+    if (typeof window === 'undefined') {
+      return
+    }
+    
     try {
       localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(updatedUsers))
     } catch (error) {
@@ -100,27 +121,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const checkAuth = () => {
     setIsLoading(true)
+    
+    // Перевіряємо, чи ми на клієнті
+    if (typeof window === 'undefined') {
+      setIsLoading(false)
+      return
+    }
+    
     try {
       const savedUser = localStorage.getItem(CURRENT_USER_STORAGE_KEY)
       if (savedUser) {
         const userData = JSON.parse(savedUser)
         setUser({ ...userData, createdAt: new Date(userData.createdAt), updatedAt: new Date(userData.updatedAt) })
       } else {
-        // Create a guest user if no one is logged in
-        const guestUser: User = {
-          id: 'guest',
-          name: 'Guest User',
-          email: 'guest@nexus.com',
-          role: 'viewer',
-          status: 'active',
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
-        setUser(guestUser);
+        setUser(null)
       }
     } catch (error) {
       console.error('Error checking auth from localStorage:', error)
-      setUser(null) // Очищуємо користувача у разі помилки
+      setUser(null)
     } finally {
       setIsLoading(false)
     }
@@ -148,11 +166,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { password, ...userToSave } = foundUser
     
     setUser(userToSave)
-    try {
-      localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(userToSave))
-    } catch (error) {
-      console.error("Failed to save current user to localStorage", error)
-      return { success: false, error: 'Помилка збереження сесії' }
+    
+    // Перевіряємо, чи ми на клієнті
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(userToSave))
+      } catch (error) {
+        console.error("Failed to save current user to localStorage", error)
+        return { success: false, error: 'Помилка збереження сесії' }
+      }
     }
     
     return { success: true }
@@ -181,12 +203,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = () => {
     setUser(null)
-    try {
-      localStorage.removeItem(CURRENT_USER_STORAGE_KEY)
-      // Перенаправляємо на сторінку входу
-      window.location.href = '/login'
-    } catch (error) {
-      console.error("Failed to remove current user from localStorage", error)
+    
+    // Перевіряємо, чи ми на клієнті
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem(CURRENT_USER_STORAGE_KEY)
+        // Перенаправляємо на сторінку входу
+        window.location.href = '/login'
+      } catch (error) {
+        console.error("Failed to remove current user from localStorage", error)
+      }
     }
   }
 
@@ -198,19 +224,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { success: true }
   }
 
+  const suspendUser = async (userId: string): Promise<{ success: boolean }> => {
+    const updatedUsers = users.map(u => 
+      u.id === userId ? { ...u, status: 'suspended' as const, updatedAt: new Date() } : u
+    )
+    saveUsers(updatedUsers)
+    return { success: true }
+  }
+
+  const activateUser = async (userId: string): Promise<{ success: boolean }> => {
+    const updatedUsers = users.map(u => 
+      u.id === userId ? { ...u, status: 'active' as const, updatedAt: new Date() } : u
+    )
+    saveUsers(updatedUsers)
+    return { success: true }
+  }
+
+  const deleteUser = async (userId: string): Promise<{ success: boolean }> => {
+    const updatedUsers = users.filter(u => u.id !== userId)
+    saveUsers(updatedUsers)
+    return { success: true }
+  }
+
   const getAllUsers = () => {
     return users
   }
 
   const value: AuthContextType = {
     user,
-    isAuthenticated: !!user,
+    isAuthenticated: !!user && user.id !== 'guest',
     isLoading,
     login,
     registerUser,
     logout,
     checkAuth,
     approveUser,
+    suspendUser,
+    activateUser,
+    deleteUser,
     getAllUsers
   }
 

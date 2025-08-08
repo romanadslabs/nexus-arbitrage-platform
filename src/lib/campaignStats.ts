@@ -32,50 +32,40 @@ export class CampaignStatsService {
   // Отримати статистику для конкретної кампанії
   static getStatsByCampaign(campaignId: string): CampaignDailyStats[] {
     const allStats = this.getAllStats()
-    return allStats.filter(stat => stat.campaignId === campaignId)
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    return allStats
+      .filter(stat => stat.campaignId === campaignId)
+      .sort((a, b) => {
+        const d = new Date(b.date).getTime() - new Date(a.date).getTime()
+        if (d !== 0) return d
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      })
   }
 
-  // Отримати статистику за конкретну дату
+  // Отримати останню статистику за конкретну дату (якщо кілька записів на день)
   static getStatsByDate(campaignId: string, date: string): CampaignDailyStats | null {
     const allStats = this.getAllStats()
-    return allStats.find(stat => stat.campaignId === campaignId && stat.date === date) || null
+    const sameDay = allStats.filter(stat => stat.campaignId === campaignId && stat.date === date)
+    if (sameDay.length === 0) return null
+    return sameDay.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]
   }
 
-  // Створити або оновити статистику
+  // Створити новий запис статистики (декілька на день дозволено)
   static createOrUpdateStats(statsData: Omit<CampaignDailyStats, 'id' | 'createdAt' | 'updatedAt'>): CampaignDailyStats {
     const allStats = this.getAllStats()
-    
-    // Перевіряємо чи є вже статистика за цю дату
-    const existingIndex = allStats.findIndex(
-      stat => stat.campaignId === statsData.campaignId && stat.date === statsData.date
-    )
 
     // Розраховуємо похідні метрики
     const calculatedStats = this.calculateMetrics(statsData)
 
-    if (existingIndex >= 0) {
-      // Оновлюємо існуючу статистику
-      const updatedStats: CampaignDailyStats = {
-        ...allStats[existingIndex],
-        ...calculatedStats,
-        updatedAt: new Date()
-      }
-      allStats[existingIndex] = updatedStats
-      localStorageUtils.set(LOCAL_STORAGE_KEY, allStats)
-      return updatedStats
-    } else {
-      // Створюємо нову статистику
-      const newStats: CampaignDailyStats = {
-        id: `stats_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        ...calculatedStats,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }
-      allStats.push(newStats)
-      localStorageUtils.set(LOCAL_STORAGE_KEY, allStats)
-      return newStats
+    // Завжди створюємо новий запис, навіть якщо вже є статистика на цю дату
+    const newStats: CampaignDailyStats = {
+      id: `stats_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      ...calculatedStats,
+      createdAt: new Date(),
+      updatedAt: new Date()
     }
+    allStats.push(newStats)
+    localStorageUtils.set(LOCAL_STORAGE_KEY, allStats)
+    return newStats
   }
 
   // Видалити статистику
@@ -165,7 +155,7 @@ export class CampaignStatsService {
       avgCvr: parseFloat(avgCvr.toFixed(2)),
       avgCpl: parseFloat(avgCpl.toFixed(2)),
       totalRoi: parseFloat(totalRoi.toFixed(2)),
-      daysActive: stats.length
+      daysActive: new Set(stats.map(s => s.date)).size
     }
   }
 

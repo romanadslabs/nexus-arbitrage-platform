@@ -102,7 +102,8 @@ export default function CampaignsManager() {
   }
 
   // Фільтрація кампаній поточного арбітражника або всі для адміністратора
-  const baseFilteredCampaigns = user?.role === 'leader' 
+  const isAdminOrLeader = user?.role === 'admin' || user?.role === 'leader'
+  const baseFilteredCampaigns = isAdminOrLeader 
     ? campaigns 
     : campaigns.filter(campaign => campaign.launcherId === user?.id)
 

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { Calendar, TrendingUp, DollarSign, BarChart3, Download, RefreshCw, AlertCircle } from 'lucide-react'
+import { LinkStatsService } from '@/lib/offers'
 
 interface PeriodStats {
   period: {
@@ -42,17 +43,28 @@ export default function PeriodReports() {
     setError(null)
 
     try {
-      const response = await fetch(`/api/airtable/reports?type=period&startDate=${startDate}&endDate=${endDate}`)
-      const result = await response.json()
+      const start = new Date(startDate)
+      const end = new Date(endDate)
 
-      if (result.success) {
-        setPeriodStats(result.data)
-      } else {
-        setError(result.error || 'Помилка завантаження даних')
-      }
+      const stats = LinkStatsService.getStatsByPeriod(start, end)
+
+      const totalRevenue = stats.reduce((sum, s) => sum + (s.revenue || 0), 0)
+      const totalExpenses = stats.reduce((sum, s) => sum + (s.cost || 0), 0)
+      const totalProfit = totalRevenue - totalExpenses
+      const totalROI = totalExpenses > 0 ? (totalProfit / totalExpenses) * 100 : 0
+      const offers = new Set(stats.map(s => s.offerId)).size
+
+      setPeriodStats({
+        period: { startDate, endDate },
+        offers,
+        totalRevenue,
+        totalExpenses,
+        totalProfit,
+        totalROI,
+      })
     } catch (err) {
-      setError('Помилка мережі')
-      console.error('Error fetching period stats:', err)
+      setError('Помилка обробки даних')
+      console.error('Error calculating period stats:', err)
     } finally {
       setLoading(false)
     }
