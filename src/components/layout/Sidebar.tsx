@@ -58,7 +58,7 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
   ]
 
   return (
-    <aside className={`fixed top-0 left-0 h-full bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-64'}`}>
+    <aside className={`hidden lg:flex fixed top-0 left-0 h-full bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex-col transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-64'}`}>
       {/* Logo */}
       <div className="flex items-center justify-center h-20 border-b border-gray-200 dark:border-gray-700">
         <Link href="/" className="flex items-center space-x-2">
