@@ -1,7 +1,8 @@
 export async function GET(
   _req: Request,
-  { params }: { params: { width: string; height: string } }
+  context: any
 ) {
+  const { params } = context as { params: { width: string; height: string } }
   const width = Number.parseInt(params.width, 10) || 32
   const height = Number.parseInt(params.height, 10) || 32
   const label = `${width}x${height}`

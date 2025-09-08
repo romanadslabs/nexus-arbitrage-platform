@@ -2,10 +2,10 @@
 import { User, Metric, Task } from '@/types';
 
 export const mockTeamMembers: User[] = [
-  { id: 'user-1', name: 'Олександр', role: 'admin', avatar: '/avatars/01.png', status: 'active', email: 'leader@example.com' },
-  { id: 'user-2', name: 'Марія', role: 'farmer', avatar: '/avatars/02.png', status: 'active', email: 'farmer@example.com' },
-  { id: 'user-3', name: 'Іван', role: 'launcher', avatar: '/avatars/03.png', status: 'suspended', email: 'launcher@example.com' },
-  { id: 'user-4', name: 'Дарина', role: 'viewer', avatar: '/avatars/04.png', status: 'pending', email: 'viewer@example.com' },
+  { id: 'user-1', name: 'Олександр', role: 'admin', avatar: '/avatars/01.png', status: 'active', email: 'leader@example.com', createdAt: new Date(), updatedAt: new Date() },
+  { id: 'user-2', name: 'Марія', role: 'farmer', avatar: '/avatars/02.png', status: 'active', email: 'farmer@example.com', createdAt: new Date(), updatedAt: new Date() },
+  { id: 'user-3', name: 'Іван', role: 'launcher', avatar: '/avatars/03.png', status: 'suspended', email: 'launcher@example.com', createdAt: new Date(), updatedAt: new Date() },
+  { id: 'user-4', name: 'Дарина', role: 'viewer', avatar: '/avatars/04.png', status: 'pending', email: 'viewer@example.com', createdAt: new Date(), updatedAt: new Date() },
 ];
 
 export const mockMetrics: Metric[] = [
@@ -26,6 +26,8 @@ export const mockTasks: Task[] = [
         project: 'Project Alpha',
         tags: ['Marketing', 'Urgent'],
         description: 'Детальний опис завдання для запуску кампанії.',
+        createdAt: new Date(),
+        updatedAt: new Date(),
         comments: [
             { id: 'comment-1', authorId: mockTeamMembers[0].id, content: 'Потрібно прискоритись', createdAt: new Date() }
         ],
@@ -44,6 +46,8 @@ export const mockTasks: Task[] = [
         project: 'Project Beta',
         tags: ['Analytics'],
         description: 'Зібрати дані та підготувати звіт.',
+        createdAt: new Date(),
+        updatedAt: new Date(),
         comments: [],
         subtasks: []
     },
