@@ -2,10 +2,10 @@
 import { User, Metric, Task } from '@/types';
 
 export const mockTeamMembers: User[] = [
-  { id: 'user-1', name: 'Олександр', role: 'admin', avatar: '/avatars/01.png', status: 'active', email: 'leader@example.com' },
-  { id: 'user-2', name: 'Марія', role: 'farmer', avatar: '/avatars/02.png', status: 'active', email: 'farmer@example.com' },
-  { id: 'user-3', name: 'Іван', role: 'launcher', avatar: '/avatars/03.png', status: 'suspended', email: 'launcher@example.com' },
-  { id: 'user-4', name: 'Дарина', role: 'viewer', avatar: '/avatars/04.png', status: 'pending', email: 'viewer@example.com' },
+  { id: 'user-1', name: 'Олександр', role: 'admin', avatar: '/avatars/01.png', status: 'active', email: 'leader@example.com', createdAt: new Date(), updatedAt: new Date() },
+  { id: 'user-2', name: 'Марія', role: 'farmer', avatar: '/avatars/02.png', status: 'active', email: 'farmer@example.com', createdAt: new Date(), updatedAt: new Date() },
+  { id: 'user-3', name: 'Іван', role: 'launcher', avatar: '/avatars/03.png', status: 'suspended', email: 'launcher@example.com', createdAt: new Date(), updatedAt: new Date() },
+  { id: 'user-4', name: 'Дарина', role: 'viewer', avatar: '/avatars/04.png', status: 'pending', email: 'viewer@example.com', createdAt: new Date(), updatedAt: new Date() },
 ];
 
 export const mockMetrics: Metric[] = [
@@ -32,7 +32,9 @@ export const mockTasks: Task[] = [
         subtasks: [
             { id: 'sub-1', title: 'Підготувати креативи', completed: true },
             { id: 'sub-2', title: 'Налаштувати таргетинг', completed: false },
-        ]
+        ],
+        createdAt: new Date(),
+        updatedAt: new Date()
     },
     { 
         id: 'task-2', 
@@ -45,6 +47,8 @@ export const mockTasks: Task[] = [
         tags: ['Analytics'],
         description: 'Зібрати дані та підготувати звіт.',
         comments: [],
-        subtasks: []
+        subtasks: [],
+        createdAt: new Date(),
+        updatedAt: new Date()
     },
 ]; 

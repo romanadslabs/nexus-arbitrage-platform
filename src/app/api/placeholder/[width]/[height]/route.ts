@@ -1,7 +1,10 @@
+import { NextRequest } from 'next/server'
+
 export async function GET(
-  _req: Request,
-  { params }: { params: { width: string; height: string } }
+  _req: NextRequest,
+  props: { params: Promise<{ width: string; height: string }> }
 ) {
+  const params = await props.params
   const width = Number.parseInt(params.width, 10) || 32
   const height = Number.parseInt(params.height, 10) || 32
   const label = `${width}x${height}`
